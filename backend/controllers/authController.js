@@ -49,20 +49,6 @@ exports.signup = async (req, res) => {
       });
     }
     
-    // Check if email already exists in users table
-    const emailCheck = await client.query(
-      'SELECT id FROM users WHERE email = $1',
-      [email]
-    );
-    
-    if (emailCheck.rows.length > 0) {
-      await client.query('ROLLBACK');
-      return res.status(409).json({
-        success: false,
-        message: 'This email is already registered'
-      });
-    }
-    
     // Get the assigned role, name, and email from pending_signups
     const roleCheck = await client.query(
       'SELECT assigned_role, full_name, email FROM pending_signups WHERE emp_id = $1',
@@ -78,6 +64,20 @@ exports.signup = async (req, res) => {
     }
 
     const { assigned_role, full_name, email } = roleCheck.rows[0];
+    
+    // NOW check if email already exists in users table (after email is defined)
+    const emailCheck = await client.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+    
+    if (emailCheck.rows.length > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({
+        success: false,
+        message: 'This email is already registered'
+      });
+    }
     
     // Hash password
     const hashed_password = await bcrypt.hash(password, 10);
@@ -145,6 +145,8 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
     
+    console.log('🔍 Login attempt:', { email, password_length: password?.length });
+    
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -156,7 +158,10 @@ exports.login = async (req, res) => {
     const query = 'SELECT * FROM users WHERE email = $1';
     const result = await pool.query(query, [email]);
     
+    console.log('📊 User found:', result.rows.length > 0 ? 'YES' : 'NO');
+    
     if (result.rows.length === 0) {
+      console.log('❌ No user found with email:', email);
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
@@ -164,9 +169,11 @@ exports.login = async (req, res) => {
     }
     
     const user = result.rows[0];
+    console.log('👤 User data:', { id: user.id, email: user.email, role: user.role });
     
     // Check if user is active
     if (!user.is_active) {
+      console.log('⚠️ User is inactive');
       return res.status(403).json({
         success: false,
         message: 'Account is inactive. Please contact HR.'
@@ -174,9 +181,16 @@ exports.login = async (req, res) => {
     }
     
     // Verify password
+    console.log('🔐 Comparing passwords...');
+    console.log('   Password provided:', password);
+    console.log('   Hash in DB:', user.password);
+    
     const is_valid = await bcrypt.compare(password, user.password);
     
+    console.log('✅ Password match result:', is_valid);
+    
     if (!is_valid) {
+      console.log('❌ Password does not match');
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
@@ -201,6 +215,8 @@ exports.login = async (req, res) => {
       { expiresIn: '24h' }
     );
     
+    console.log('🎫 Token generated successfully');
+    
     res.status(200).json({
       success: true,
       message: 'Login successful',
@@ -218,7 +234,7 @@ exports.login = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('❌ Login error:', error);
     res.status(500).json({
       success: false,
       message: 'Error during login',

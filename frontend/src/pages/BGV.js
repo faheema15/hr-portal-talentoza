@@ -86,8 +86,9 @@ function BGV() {
         
         // All data comes from the backend already combined
         const transformedData = {
-          // From employee_details (prefilled and disabled)
-          photo: bgvInfo.photo || INITIAL_PHOTO,
+          photo: bgvInfo.photo 
+          ? (bgvInfo.photo.startsWith('http') ? bgvInfo.photo : `${API_BASE_URL}${bgvInfo.photo}`)
+          : INITIAL_PHOTO,
           empId: bgvInfo.empId || "",
           empName: bgvInfo.empName || "",
           

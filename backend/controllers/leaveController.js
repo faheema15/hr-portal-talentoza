@@ -1,13 +1,61 @@
 //backend/controllers/leaveController.js
 const Leave = require('../models/Leave');
+const pool = require('../config/database');
+const EmailService = require('../services/emailService');
 
 // Create new leave record
 exports.createLeave = async (req, res) => {
   try {
+    const { empId, leaveFromDate, leaveToDate, leaveApplyType, reasonForLeave } = req.body;
+
+    // Validate required fields
+    if (!empId || !leaveFromDate || !leaveToDate || !leaveApplyType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields'
+      });
+    }
+
+    // Get employee details for email
+    const empQuery = `
+      SELECT 
+        ed.emp_id, ed.full_name, ed.email1, ed.email2,
+        ed.designation, d.name as department, ed.reporting_manager_id
+      FROM employee_details ed
+      LEFT JOIN departments d ON ed.department_id = d.id
+      WHERE ed.emp_id = $1
+    `;
+    const empResult = await pool.query(empQuery, [empId]);
+    
+    if (empResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found'
+      });
+    }
+
+    const empData = empResult.rows[0];
+
+    // Create leave record
     const leave = await Leave.create(req.body);
+
+    try {
+      // Send approval emails
+      await EmailService.sendLeaveApprovalEmail(
+        {
+          ...req.body,
+          _id: leave.id
+        },
+        empData
+      );
+    } catch (emailError) {
+      console.error('Email sending failed, but leave was created:', emailError);
+      // Don't fail the leave creation if email fails
+    }
+
     res.status(201).json({
       success: true,
-      message: 'Leave record created successfully',
+      message: 'Leave request created successfully. Approval emails sent.',
       data: leave
     });
   } catch (error) {
@@ -41,16 +89,110 @@ exports.getAllLeaves = async (req, res) => {
 // Get leave by employee ID
 exports.getLeaveById = async (req, res) => {
   try {
-    const leave = await Leave.findByEmpId(req.params.id);
-    if (!leave) {
+    const empId = req.params.id;
+    
+    const employeeQuery = `
+      SELECT 
+        ed.emp_id,
+        ed.full_name,
+        ed.designation,
+        ed.department_id,
+        ed.reporting_manager_id,
+        ed.contact1,
+        ed.contact2,
+        ed.email1,
+        ed.email2,
+        ed.photo_url,
+        d.name as department_name,
+        COALESCE(rm_user.name, rm_emp.full_name, 'Not Assigned') as reporting_manager_name
+      FROM employee_details ed
+      LEFT JOIN departments d ON ed.department_id = d.id
+      LEFT JOIN users rm_user ON ed.reporting_manager_id = rm_user.id
+      LEFT JOIN employee_details rm_emp ON ed.reporting_manager_id = rm_emp.user_id
+      WHERE ed.emp_id = $1
+    `;
+    
+    const employeeResult = await pool.query(employeeQuery, [empId]);
+    
+    if (employeeResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Leave record not found'
+        message: 'Employee not found'
       });
     }
+    
+    const employeeData = employeeResult.rows[0];
+    
+    const leaveTypesQuery = `
+      SELECT 
+        leave_type,
+        allocated,
+        consumed,
+        remaining
+      FROM leave_types
+      WHERE emp_id = $1 AND year = EXTRACT(YEAR FROM CURRENT_DATE)
+    `;
+    
+    const leaveTypesResult = await pool.query(leaveTypesQuery, [empId]);
+    const leaveTypes = leaveTypesResult.rows;
+    
+    let sickLeave = leaveTypes.find(lt => lt.leave_type === 'Sick Leave') || {};
+    let rhLeave = leaveTypes.find(lt => lt.leave_type === 'RH') || {};
+    let plLeave = leaveTypes.find(lt => lt.leave_type === 'PL') || {};
+    
+    const leaveAppQuery = `
+      SELECT 
+        leave_type,
+        from_date,
+        to_date,
+        reason,
+        status
+      FROM leave_applications
+      WHERE emp_id = $1
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    
+    const leaveAppResult = await pool.query(leaveAppQuery, [empId]);
+    const leaveApp = leaveAppResult.rows[0] || {};
+    
+    const responseData = {
+      empId: employeeData.emp_id,
+      empName: employeeData.full_name,
+      photo: employeeData.photo_url,
+      
+      designation: employeeData.designation,
+      department: employeeData.department_name,
+      departmentId: employeeData.department_id,
+      reportingManagerName: employeeData.reporting_manager_name,
+      
+      contact1: employeeData.contact1,
+      contact2: employeeData.contact2,
+      mailId1: employeeData.email1,
+      mailId2: employeeData.email2,
+      
+      sickLeavesAllocated: sickLeave.allocated || "",
+      sickLeavesConsumed: sickLeave.consumed || "",
+      sickLeavesRemaining: sickLeave.remaining || "",
+      
+      rhAllocated: rhLeave.allocated || "",
+      rhConsumed: rhLeave.consumed || "",
+      rhRemaining: rhLeave.remaining || "",
+      
+      plAllocated: plLeave.allocated || "",
+      plConsumed: plLeave.consumed || "",
+      plRemaining: plLeave.remaining || "",
+      
+      leaveApplyType: leaveApp.leave_type || "",
+      leaveFromDate: leaveApp.from_date || "",
+      leaveToDate: leaveApp.to_date || "",
+      reasonForLeave: leaveApp.reason || "",
+      leaveApprovalStatus: leaveApp.status || "Pending"
+    };
+    
     res.status(200).json({
       success: true,
-      data: leave
+      data: responseData
     });
   } catch (error) {
     console.error('Error fetching leave record:', error);
@@ -145,6 +287,74 @@ exports.getLeavesByDateRange = async (req, res) => {
   }
 };
 
+// Update leave status (with email notification)
+exports.updateLeaveStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const leaveId = req.params.id;
+    
+    if (!status || !['Pending', 'Approved', 'Rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid status is required (Pending, Approved, Rejected)'
+      });
+    }
+
+    // Get leave details
+    const leaveQuery = `
+      SELECT la.*, ed.full_name, ed.email1
+      FROM leave_applications la
+      LEFT JOIN employee_details ed ON la.emp_id = ed.emp_id
+      WHERE la.id = $1
+    `;
+    
+    const leaveResult = await pool.query(leaveQuery, [leaveId]);
+    if (leaveResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Leave record not found'
+      });
+    }
+
+    const leaveData = leaveResult.rows[0];
+
+    // Update status
+    const updateQuery = `
+      UPDATE leave_applications 
+      SET status = $1, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $2 
+      RETURNING *
+    `;
+    
+    const updateResult = await pool.query(updateQuery, [status, leaveId]);
+    const updatedLeave = updateResult.rows[0];
+
+    try {
+      // Send confirmation email to employee
+      await EmailService.sendLeaveApprovalConfirmation(
+        leaveData,
+        leaveData,
+        status
+      );
+    } catch (emailError) {
+      console.error('Email sending failed:', emailError);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Leave status updated to ${status}`,
+      data: updatedLeave
+    });
+  } catch (error) {
+    console.error('Error updating leave status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating leave status',
+      error: error.message
+    });
+  }
+};
+
 // Update leave record
 exports.updateLeave = async (req, res) => {
   try {
@@ -165,40 +375,6 @@ exports.updateLeave = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error updating leave record',
-      error: error.message
-    });
-  }
-};
-
-// Update leave status
-exports.updateLeaveStatus = async (req, res) => {
-  try {
-    const { status } = req.body;
-    
-    if (!status || !['Pending', 'Approved', 'Rejected'].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Valid status is required (Pending, Approved, Rejected)'
-      });
-    }
-
-    const leave = await Leave.updateStatus(req.params.id, status);
-    if (!leave) {
-      return res.status(404).json({
-        success: false,
-        message: 'Leave record not found'
-      });
-    }
-    res.status(200).json({
-      success: true,
-      message: `Leave status updated to ${status}`,
-      data: leave
-    });
-  } catch (error) {
-    console.error('Error updating leave status:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error updating leave status',
       error: error.message
     });
   }

@@ -1,15 +1,23 @@
--- Local Development Initialization Script
--- This script creates the database and all tables
+-- ======================================================
+-- HR PORTAL - LOCAL DEVELOPMENT DATABASE INITIALIZATION
+-- ======================================================
 
--- Create database (for local development only)
+-- Drop and recreate the database (requires superuser)
 DROP DATABASE IF EXISTS hr_portal_db;
-CREATE DATABASE hr_portal_db;
+CREATE DATABASE hr_portal_db WITH OWNER = hr_user;
 
--- Connect to the database
+-- Connect to the DB
 \c hr_portal_db;
 
--- Enable UUID extension (optional, if you want to use UUIDs)
+-- ==========================
+-- Extensions
+-- ==========================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+
+-- ======================================================
+-- TABLES
+-- ======================================================
 
 -- 1. Users Table
 CREATE TABLE users (
@@ -53,11 +61,11 @@ CREATE TABLE projects (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-
--- 5. Employee Details Table
+-- 4. Employee Details Table
 CREATE TABLE employee_details (
     emp_id SERIAL PRIMARY KEY,
     user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    full_name VARCHAR(255),
     designation VARCHAR(255),
     department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
     reporting_manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -88,7 +96,7 @@ CREATE TABLE employee_details (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Project assignment Table
+-- 5. Project Assignments
 CREATE TABLE project_assignments (
     id SERIAL PRIMARY KEY,
     project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
@@ -102,8 +110,7 @@ CREATE TABLE project_assignments (
     UNIQUE(project_id, emp_id, start_date)
 );
 
-
--- 4. Teams Table
+-- 6. Teams Table
 CREATE TABLE teams (
     team_id SERIAL PRIMARY KEY,
     team_name VARCHAR(255) NOT NULL,
@@ -113,22 +120,39 @@ CREATE TABLE teams (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- NEW: Team Members Table (Explicit team membership)
--- This allows one employee to be in multiple teams
+-- 7. Team Members Table
 CREATE TABLE team_members (
     id SERIAL PRIMARY KEY,
     team_id INTEGER REFERENCES teams(team_id) ON DELETE CASCADE,
     emp_id INTEGER REFERENCES employee_details(emp_id) ON DELETE CASCADE,
-    role_in_team VARCHAR(100), -- e.g., 'Developer', 'Designer', 'QA', 'Lead'
+    role_in_team VARCHAR(100),
     start_date DATE DEFAULT CURRENT_DATE,
     end_date DATE,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(team_id, emp_id) -- One employee can be in a team only once (but can be in multiple teams)
+    UNIQUE(team_id, emp_id)
 );
 
--- Educational Details Table
+-- 8. Pending Signups Table
+CREATE TABLE pending_signups (
+    id SERIAL PRIMARY KEY,
+    emp_id INTEGER NOT NULL UNIQUE,
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    assigned_role VARCHAR(20) NOT NULL CHECK (assigned_role IN ('HR', 'Manager', 'SkipManager', 'Employee')),
+    designation VARCHAR(255),
+    department_name VARCHAR(255),
+    reporting_manager_name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (emp_id) REFERENCES employee_details(emp_id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_pending_signups_emp_id ON pending_signups(emp_id);
+CREATE INDEX idx_pending_signups_email ON pending_signups(email);
+
+-- 9. Educational Details
 CREATE TABLE educational_details (
     id SERIAL PRIMARY KEY,
     emp_id INTEGER REFERENCES employee_details(emp_id) ON DELETE CASCADE,
@@ -141,7 +165,7 @@ CREATE TABLE educational_details (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Certification Table
+-- 10. Certifications
 CREATE TABLE certifications (
     id SERIAL PRIMARY KEY,
     emp_id INTEGER REFERENCES employee_details(emp_id) ON DELETE CASCADE,
@@ -155,7 +179,7 @@ CREATE TABLE certifications (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Research Papers Table
+-- 11. Research Papers
 CREATE TABLE research_papers (
     id SERIAL PRIMARY KEY,
     emp_id INTEGER REFERENCES employee_details(emp_id) ON DELETE CASCADE,
@@ -168,7 +192,7 @@ CREATE TABLE research_papers (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 6. Joining Details Table
+-- 12. Joining Details
 CREATE TABLE joining_details (
     id SERIAL PRIMARY KEY,
     emp_id INTEGER REFERENCES employee_details(emp_id) ON DELETE CASCADE,
@@ -177,7 +201,7 @@ CREATE TABLE joining_details (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Previous Employment Table
+-- 13. Previous Employment
 CREATE TABLE previous_employment (
     id SERIAL PRIMARY KEY,
     joining_id INTEGER REFERENCES joining_details(id) ON DELETE CASCADE,
@@ -192,7 +216,7 @@ CREATE TABLE previous_employment (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 7. Bank Details Table
+-- 14. Bank Details
 CREATE TABLE bank_details (
     id SERIAL PRIMARY KEY,
     emp_id INTEGER REFERENCES employee_details(emp_id) ON DELETE CASCADE,
@@ -209,7 +233,7 @@ CREATE TABLE bank_details (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 8. BGV (Background Verification) Table
+-- 15. BGV Table
 CREATE TABLE bgv (
     id SERIAL PRIMARY KEY,
     emp_id INTEGER UNIQUE REFERENCES employee_details(emp_id) ON DELETE CASCADE,
@@ -219,7 +243,7 @@ CREATE TABLE bgv (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 9. Leave Type Table
+-- 16. Leave Types
 CREATE TABLE leave_types (
     id SERIAL PRIMARY KEY,
     emp_id INTEGER REFERENCES employee_details(emp_id) ON DELETE CASCADE,
@@ -233,7 +257,7 @@ CREATE TABLE leave_types (
     UNIQUE(emp_id, leave_type, year)
 );
 
--- Leave Application Table
+-- 17. Leave Applications
 CREATE TABLE leave_applications (
     id SERIAL PRIMARY KEY,
     emp_id INTEGER REFERENCES employee_details(emp_id) ON DELETE CASCADE,
@@ -246,7 +270,7 @@ CREATE TABLE leave_applications (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 10. Attendance Table
+-- 18. Attendance
 CREATE TABLE attendance (
     id SERIAL PRIMARY KEY,
     emp_id INTEGER REFERENCES employee_details(emp_id) ON DELETE CASCADE,
@@ -261,11 +285,21 @@ CREATE TABLE attendance (
     UNIQUE(emp_id, date)
 );
 
--- 11. Salary Table
+CREATE TABLE attendance_records (
+    id SERIAL PRIMARY KEY,
+    emp_id INTEGER REFERENCES employee_details(emp_id) ON DELETE CASCADE,
+    attendance_date DATE NOT NULL,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('present', 'absent', 'leave')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(emp_id, attendance_date)
+);
+
+-- 19. Salary Table
 CREATE TABLE salary (
     id SERIAL PRIMARY KEY,
     emp_id INTEGER REFERENCES employee_details(emp_id) ON DELETE CASCADE,
-    salary_month VARCHAR(7) NOT NULL, -- YYYY-MM format
+    salary_month VARCHAR(7) NOT NULL,
     basic_salary DECIMAL(12, 2) DEFAULT 0,
     hra DECIMAL(12, 2) DEFAULT 0,
     conveyance_allowance DECIMAL(12, 2) DEFAULT 0,
@@ -287,7 +321,7 @@ CREATE TABLE salary (
     UNIQUE(emp_id, salary_month)
 );
 
--- 12. Insurance Table
+-- 20. Insurance Table
 CREATE TABLE insurance (
     id SERIAL PRIMARY KEY,
     emp_id INTEGER REFERENCES employee_details(emp_id) ON DELETE CASCADE,
@@ -304,7 +338,7 @@ CREATE TABLE insurance (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Dependent Details Table
+-- 21. Dependent Details
 CREATE TABLE dependent_details (
     id SERIAL PRIMARY KEY,
     insurance_id INTEGER REFERENCES insurance(id) ON DELETE CASCADE,
@@ -317,7 +351,7 @@ CREATE TABLE dependent_details (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Claim History Table
+-- 22. Claim History
 CREATE TABLE claim_history (
     id SERIAL PRIMARY KEY,
     insurance_id INTEGER REFERENCES insurance(id) ON DELETE CASCADE,
@@ -330,13 +364,19 @@ CREATE TABLE claim_history (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create indexes for better performance
+
+-- ======================================================
+-- INDEXES
+-- ======================================================
+
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role ON users(role);
 CREATE INDEX idx_employee_details_user_id ON employee_details(user_id);
 CREATE INDEX idx_employee_details_department_id ON employee_details(department_id);
 CREATE INDEX idx_employee_details_reporting_manager_id ON employee_details(reporting_manager_id);
 CREATE INDEX idx_attendance_emp_id_date ON attendance(emp_id, date);
+CREATE INDEX idx_attendance_records_emp_id ON attendance_records(emp_id);
+CREATE INDEX idx_attendance_records_date ON attendance_records(attendance_date);
 CREATE INDEX idx_salary_emp_id_month ON salary(emp_id, salary_month);
 CREATE INDEX idx_leave_applications_emp_id ON leave_applications(emp_id);
 CREATE INDEX idx_leave_applications_status ON leave_applications(status);
@@ -345,16 +385,23 @@ CREATE INDEX idx_project_assignments_emp_id ON project_assignments(emp_id);
 CREATE INDEX idx_team_members_team_id ON team_members(team_id);
 CREATE INDEX idx_team_members_emp_id ON team_members(emp_id);
 
--- Create trigger function to update updated_at timestamp
+
+-- ======================================================
+-- TRIGGER FUNCTION
+-- ======================================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = CURRENT_TIMESTAMP;
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql;
 
--- Apply the trigger to all tables with updated_at column
+
+-- ======================================================
+-- TRIGGERS
+-- ======================================================
+
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_departments_updated_at BEFORE UPDATE ON departments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON projects FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -372,18 +419,58 @@ CREATE TRIGGER update_bgv_updated_at BEFORE UPDATE ON bgv FOR EACH ROW EXECUTE F
 CREATE TRIGGER update_leave_types_updated_at BEFORE UPDATE ON leave_types FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_leave_applications_updated_at BEFORE UPDATE ON leave_applications FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_attendance_updated_at BEFORE UPDATE ON attendance FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_attendance_records_updated_at BEFORE UPDATE ON attendance_records FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_salary_updated_at BEFORE UPDATE ON salary FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_insurance_updated_at BEFORE UPDATE ON insurance FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_dependent_details_updated_at BEFORE UPDATE ON dependent_details FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_claim_history_updated_at BEFORE UPDATE ON claim_history FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_pending_signups_updated_at BEFORE UPDATE ON pending_signups FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Insert default admin user (password should be hashed in your application)
--- Default password: 'admin123' (remember to hash this in your application)
-INSERT INTO users (name, email, password, role, is_active) 
-VALUES ('Admin User', 'admin@hrportal.com', '$2b$10$example.hash.here', 'HR', true);
 
+-- ======================================================
+-- DEFAULT ADMIN USER
+-- ======================================================
+INSERT INTO users (name, email, password, role, is_active)
+VALUES ('Admin User', 'admin@hrportal.com', '$2b$10$9KhyzJG5DeSVthvNHFusW.EFBGheWdTE5d0PM85yVyY8kZOCvqEYO', 'HR', true);
+
+
+-- ======================================================
+-- PRIVILEGES - VERY IMPORTANT
+-- ======================================================
+
+-- Make hr_user owner of all tables
+DO $$
+DECLARE r RECORD;
+BEGIN
+    FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
+        EXECUTE 'ALTER TABLE public.' || quote_ident(r.tablename) || ' OWNER TO hr_user';
+    END LOOP;
+END$$;
+
+-- Make hr_user owner of all sequences
+DO $$
+DECLARE r RECORD;
+BEGIN
+    FOR r IN SELECT sequencename FROM pg_sequences WHERE schemaname = 'public' LOOP
+        EXECUTE 'ALTER SEQUENCE public.' || quote_ident(r.sequencename) || ' OWNER TO hr_user';
+    END LOOP;
+END$$;
+
+-- Make hr_user owner of schema
+ALTER SCHEMA public OWNER TO hr_user;
+
+-- Default privileges for future tables & sequences
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO hr_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO hr_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON FUNCTIONS TO hr_user;
+
+-- Database ownership confirm
+ALTER DATABASE hr_portal_db OWNER TO hr_user;
+
+
+-- ======================================================
+-- COMMENTS
+-- ======================================================
 COMMENT ON DATABASE hr_portal_db IS 'HR Portal Database - Local Development';
-COMMENT ON TABLE team_members IS 'Explicit team membership - allows employees to be in multiple teams';
-
-
--- then manually did ALTER TABLE employee_details ADD COLUMN IF NOT EXISTS full_name VARCHAR(255);
+COMMENT ON TABLE team_members IS 'Employees can belong to multiple teams.';
+COMMENT ON TABLE pending_signups IS 'Temporary storage for employee signup workflow.';

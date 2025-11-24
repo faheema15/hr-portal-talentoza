@@ -310,12 +310,23 @@ function EmployeeDetails() {
     }
   }, [successMessage, createdEmployee]);
 
-  const handleChange = (e) => {
+  const handleChange = async (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({ 
       ...prev, 
       [name]: type === 'checkbox' ? checked : value 
     }));
+    
+    // Real-time check for employee ID
+    if (isNewEmployee && name === 'emp_id' && value.trim()) {
+      const exists = await checkEmployeeIdExists(value.trim());
+      if (exists) {
+        setError(`Employee ID "${value}" already exists. Please use a different ID.`);
+      } else {
+        setError(null);
+      }
+    }
+    
     if (!createdEmployee) {
       setSuccessMessage(null);
     }
@@ -415,19 +426,26 @@ const handlePhotoUpdate = async (photoUrl) => {
 };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (isNewEmployee) {
-      if (!formData.emp_id || !formData.user_role || !formData.full_name || !formData.email1 || !formData.designation) {
-        alert("Employee ID, Role, Name, Email, and Designation are required!");
-        return;
-      }
-    }
-    
-    if (!isNewEmployee && !hasChanges) {
-      alert("No changes to save!");
+  e.preventDefault();
+  
+  if (isNewEmployee) {
+    if (!formData.emp_id || !formData.user_role || !formData.full_name || !formData.email1 || !formData.designation) {
+      alert("Employee ID, Role, Name, Email, and Designation are required!");
       return;
     }
+    
+    // Check if employee ID already exists before proceeding
+    const exists = await checkEmployeeIdExists(formData.emp_id);
+    if (exists) {
+      setError(`Employee ID "${formData.emp_id}" already exists. Please use a different ID.`);
+      return;
+    }
+  }
+  
+  if (!isNewEmployee && !hasChanges) {
+    alert("No changes to save!");
+    return;
+  }
 
     try {
       setLoading(true);
@@ -673,6 +691,30 @@ const handlePhotoUpdate = async (photoUrl) => {
     alert("Copied to clipboard!");
   };
 
+  const checkEmployeeIdExists = async (empId) => {
+    if (!empId) return false;
+    
+    try {
+      const token = sessionStorage.getItem('token');
+      if (!token) return false;
+
+      const response = await fetch(`${API_BASE_URL}/api/employee-details/${empId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      // If status is 200, employee exists
+      // If status is 404, employee doesn't exist
+      return response.ok;
+    } catch (error) {
+      console.error('Error checking employee ID:', error);
+      return false;
+    }
+  };
+
   const dismissSuccessMessage = () => {
     setSuccessMessage(null);
     setCreatedEmployee(null);
@@ -739,7 +781,7 @@ const handlePhotoUpdate = async (photoUrl) => {
             ← Back 
           </button>
           <span className="navbar-brand mb-0 h1 fw-bold">
-            <span className="text-primary">{isNewEmployee ? 'Create New' : 'Edit'}</span> Employee
+            <span className="text-primary">{isNewEmployee ? 'Create New Employee' : 'Employee Details'}</span>
           </span>
           <div style={{ width: "120px" }}></div>
         </div>
@@ -764,7 +806,7 @@ const handlePhotoUpdate = async (photoUrl) => {
                       </label>
                       <input 
                         type="text" 
-                        className="form-control"
+                        className={`form-control ${error && error.includes('already exists') ? 'is-invalid' : ''}`}
                         name="emp_id"
                         value={formData.emp_id || ""}
                         onChange={handleChange}
@@ -772,6 +814,11 @@ const handlePhotoUpdate = async (photoUrl) => {
                         required
                         disabled={createdEmployee !== null}
                       />
+                      {error && error.includes('already exists') && (
+                        <div className="invalid-feedback d-block">
+                          {error}
+                        </div>
+                      )}
                       <small className="text-muted">Unique employee identifier</small>
                     </div>
                     

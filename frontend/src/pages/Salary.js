@@ -99,7 +99,9 @@ function Salary() {
         const salaryInfo = data.data;
         
         const transformedData = {
-          photo: salaryInfo.photo || INITIAL_PHOTO,
+          photo: salaryInfo.photo 
+          ? (salaryInfo.photo.startsWith('http') ? salaryInfo.photo : `${API_BASE_URL}${salaryInfo.photo}`)
+          : INITIAL_PHOTO,
           empId: salaryInfo.empId || "",
           empName: salaryInfo.empName || "",
           designation: salaryInfo.designation || "",
@@ -346,13 +348,8 @@ function Salary() {
                   <img 
                     src={photoPreview} 
                     alt="Employee" 
-                    className="img-thumbnail rounded-circle border border-3 border-primary"
-                    style={{ 
-                      width: "150px", 
-                      height: "150px", 
-                      objectFit: "cover",
-                      boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
-                    }}
+                    className="img-thumbnail rounded-circle"
+                    style={{ width: "200px", height: "250px", objectFit: "cover", borderRadius: "20px" }}
                   />
                 </div>
               </div>
@@ -461,7 +458,6 @@ function Salary() {
                     value={formData.dateOfJoining}
                     disabled
                   />
-                  <small className="text-muted">Auto-filled from Joining Details</small>
                 </div>
               </div>
 

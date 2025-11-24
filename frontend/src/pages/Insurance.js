@@ -1,22 +1,27 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { getCurrentUser } from "../utils/authUtils";
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 function Insurance() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isNewEntry = id === "new";
+  const INITIAL_PHOTO = "https://via.placeholder.com/150/cccccc/666666?text=Upload+Photo";
 
   const [formData, setFormData] = useState({
-    photo: "https://via.placeholder.com/150/cccccc/666666?text=Upload+Photo",
+    photo: INITIAL_PHOTO,
     empId: "",
     empName: "",
     designation: "",
+    department: "",
     departmentId: "",
-    departmentName: "",
-    reportingManager: "",
-    projectName: "",
+    reportingManagerName: "",
+    contact1: "",
+    contact2: "",
+    mailId1: "",
+    mailId2: "",
     insuranceProvider: "",
     policyNumber: "",
     policyType: "",
@@ -32,84 +37,168 @@ function Insurance() {
     dependentDetails: "",
     claimHistory: "",
     remarks: ""
-    });
+  });
 
   const [originalData, setOriginalData] = useState(formData);
   const [hasChanges, setHasChanges] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState(formData.photo);
+  const [photoPreview, setPhotoPreview] = useState(INITIAL_PHOTO);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const currentUser = getCurrentUser();
+  const isHR = currentUser?.role === 'HR';
+
+  const formatDateForInput = (dateValue) => {
+    if (!dateValue) return "";
+    if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+      return dateValue;
+    }
+    try {
+      const date = new Date(dateValue);
+      if (isNaN(date.getTime())) return "";
+      return date.toISOString().split('T')[0];
+    } catch (e) {
+      return "";
+    }
+  };
 
   useEffect(() => {
     setHasChanges(JSON.stringify(formData) !== JSON.stringify(originalData));
   }, [formData, originalData]);
 
   useEffect(() => {
-    if (!isNewEntry) {
-        fetch(`${API_BASE_URL}/api/insurance/${id}`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-            setFormData(data.data);
-            setOriginalData(data.data);
-            setPhotoPreview(data.data.photo || "https://via.placeholder.com/150/0066cc/ffffff?text=Employee");
-            }
-        })
-        .catch(err => console.error("Error fetching insurance details:", err));
-    }
-    }, [id, isNewEntry]);
+    const fetchData = async () => {
+      const empIdToFetch = id !== "new" ? id : currentUser?.emp_id;
+      
+      if (!empIdToFetch || empIdToFetch === "new") {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const token = sessionStorage.getItem('token');
+        
+        if (!token) {
+          setError('Session expired. Please login again.');
+          setLoading(false);
+          return;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/insurance/${empIdToFetch}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch insurance details');
+        }
+
+        const data = await response.json();
+        const insuranceInfo = data.data;
+        
+        const transformedData = {
+          photo: insuranceInfo.photo 
+          ? (insuranceInfo.photo.startsWith('http') ? insuranceInfo.photo : `${API_BASE_URL}${insuranceInfo.photo}`)
+          : INITIAL_PHOTO,
+          empId: insuranceInfo.empId || "",
+          empName: insuranceInfo.empName || "",
+          designation: insuranceInfo.designation || "",
+          department: insuranceInfo.department || "",
+          departmentId: insuranceInfo.departmentId || "",
+          reportingManagerName: insuranceInfo.reportingManagerName || "Not Assigned",
+          contact1: insuranceInfo.contact1 || "",
+          contact2: insuranceInfo.contact2 || "",
+          mailId1: insuranceInfo.mailId1 || "",
+          mailId2: insuranceInfo.mailId2 || "",
+          insuranceProvider: insuranceInfo.insuranceProvider || "",
+          policyNumber: insuranceInfo.policyNumber || "",
+          policyType: insuranceInfo.policyType || "",
+          coverageAmount: insuranceInfo.coverageAmount || "",
+          premiumAmount: insuranceInfo.premiumAmount || "",
+          policyStartDate: formatDateForInput(insuranceInfo.policyStartDate) || "",
+          policyEndDate: formatDateForInput(insuranceInfo.policyEndDate) || "",
+          policyStatus: insuranceInfo.policyStatus || "Active",
+          nomineeDetails: insuranceInfo.nomineeDetails || "",
+          nomineeRelation: insuranceInfo.nomineeRelation || "",
+          nomineeContactNumber: insuranceInfo.nomineeContactNumber || "",
+          dependentsCount: insuranceInfo.dependentsCount || "",
+          dependentDetails: insuranceInfo.dependentDetails || "",
+          claimHistory: insuranceInfo.claimHistory || "",
+          remarks: insuranceInfo.remarks || ""
+        };
+        
+        setFormData(transformedData);
+        setOriginalData(transformedData);
+        setPhotoPreview(transformedData.photo);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError(err.message || "Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id, currentUser?.emp_id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result);
-        setFormData(prev => ({ ...prev, photo: reader.result }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!hasChanges) {
-        alert("No changes to save!");
-        return;
+      alert("No changes to save!");
+      return;
     }
 
     try {
-        const url = isNewEntry 
+      setLoading(true);
+      const token = sessionStorage.getItem('token');
+      
+      if (!token) {
+        alert("Session expired. Please login again.");
+        navigate("/login");
+        return;
+      }
+
+      const url = isNewEntry 
         ? `${API_BASE_URL}/api/insurance`
         : `${API_BASE_URL}/api/insurance/${id}`;
-        
-        const method = isNewEntry ? 'POST' : 'PUT';
-        
-        const response = await fetch(url, {
+      
+      const method = isNewEntry ? 'POST' : 'PUT';
+      
+      const response = await fetch(url, {
         method: method,
         headers: {
-            'Content-Type': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(formData),
-        });
+      });
 
-        const result = await response.json();
+      const result = await response.json();
 
-        if (result.success) {
+      if (result.success) {
         setOriginalData(formData);
+        setHasChanges(false);
         alert(result.message);
-        navigate("/insurance");
-        } else {
-        alert(result.message || "Error saving insurance details!");
+        
+        if (isHR) {
+          navigate("/insurance");
         }
+      } else {
+        alert(result.message || "Error saving insurance details!");
+      }
     } catch (error) {
-        console.error("Error:", error);
-        alert("Error saving insurance details!");
+      console.error("Error:", error);
+      alert("Error saving insurance details!");
+    } finally {
+      setLoading(false);
     }
-    };
+  };
 
   const handleCancel = () => {
     if (hasChanges) {
@@ -150,6 +239,59 @@ function Insurance() {
 
   const remainingDays = calculateRemainingDays();
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-vh-100 bg-light d-flex align-items-center justify-content-center">
+        <div className="text-center">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="text-muted mt-3">Loading insurance details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-vh-100 bg-light">
+        <nav className="navbar navbar-dark bg-dark shadow-sm">
+          <div className="container-fluid px-4">
+            <button 
+              className="btn btn-outline-light btn-sm"
+              onClick={() => navigate(-1)}
+            >
+              ← Back 
+            </button>
+            <span className="navbar-brand mb-0 h1 fw-bold">
+              <span className="text-primary">Insurance</span> Management
+            </span>
+            <div style={{ width: "120px" }}></div>
+          </div>
+        </nav>
+        <div className="container py-5">
+          <div className="card shadow-sm border-0">
+            <div className="card-body p-5 text-center">
+              <div className="alert alert-danger">
+                <i className="bi bi-exclamation-triangle-fill fs-1 d-block mb-3"></i>
+                <h5>Error Loading Data</h5>
+                <p>{error}</p>
+                <button 
+                  className="btn btn-primary mt-3"
+                  onClick={() => navigate("/insurance")}
+                >
+                  Back to List
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-vh-100 bg-light">
       {/* Header */}
@@ -174,123 +316,127 @@ function Insurance() {
           <div className="card-body p-4 p-md-5">
             <form onSubmit={handleSubmit}>
               
-              {/* Photo Display Section */}
+              {/* PHOTO SECTION - VIEW ONLY */}
               <div className="row mb-5">
-                <div className="col-12">
-                  <h5 className="fw-bold text-primary mb-4">Employee Information</h5>
-                </div>
                 <div className="col-12 text-center mb-4">
                   <img 
                     src={photoPreview} 
                     alt="Employee" 
-                    className="img-thumbnail"
-                    style={{ width: "150px", height: "150px", objectFit: "cover" }}
+                    className="img-thumbnail rounded-circle"
+                    style={{ width: "200px", height: "250px", objectFit: "cover", borderRadius: "20px" }}
                   />
-                  <div className="mt-2">
-                    <small className="text-muted">Candidate Passport Size Photograph</small>
-                  </div>
-                  {hasChanges && (
-                    <div className="mt-3">
-                      <label className="form-label fw-semibold">Update Photograph</label>
-                      <input 
-                        type="file" 
-                        className="form-control mx-auto"
-                        style={{ maxWidth: "400px" }}
-                        accept="image/*"
-                        onChange={handleFileChange}
-                      />
-                      <small className="text-muted d-block mt-1">Upload passport size photo (JPG, PNG)</small>
-                    </div>
-                  )}
                 </div>
               </div>
 
-              {/* Basic Employee Details */}
+              {/* Basic Information Section */}
               <div className="row g-3 mb-4">
+                <div className="col-12">
+                  <h5 className="fw-bold text-primary mb-4">Basic Information</h5>
+                </div>
+                
                 <div className="col-md-6">
-                  <label className="form-label fw-semibold">Emp ID</label>
+                  <label className="form-label fw-semibold">Employee ID</label>
                   <input 
                     type="text" 
-                    className="form-control"
-                    name="empId"
+                    className="form-control bg-light fw-bold"
                     value={formData.empId}
-                    onChange={handleChange}
-                    placeholder="Enter Employee ID"
-                    disabled={!isNewEntry}
+                    disabled 
                   />
                 </div>
+
                 <div className="col-md-6">
-                  <label className="form-label fw-semibold">EMP Name</label>
+                  <label className="form-label fw-semibold">Employee Name</label>
                   <input 
                     type="text" 
-                    className="form-control"
-                    name="empName"
+                    className="form-control bg-light"
                     value={formData.empName}
-                    onChange={handleChange}
-                    placeholder="Full Name"
+                    disabled
                   />
                 </div>
-                <div className="col-md-6">
+
+                <div className="col-md-4">
                   <label className="form-label fw-semibold">Designation</label>
                   <input 
                     type="text" 
-                    className="form-control"
-                    name="designation"
+                    className="form-control bg-light"
                     value={formData.designation}
-                    onChange={handleChange}
-                    placeholder="Enter Designation"
+                    disabled
                   />
                 </div>
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold">Department ID</label>
+
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold">Department</label>
                   <input 
                     type="text" 
-                    className="form-control"
-                    name="departmentId"
-                    value={formData.departmentId}
-                    onChange={handleChange}
-                    placeholder="Enter Department ID"
+                    className="form-control bg-light"
+                    value={formData.department}
+                    disabled
                   />
                 </div>
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold">Department Name</label>
-                  <input 
-                    type="text" 
-                    className="form-control"
-                    name="departmentName"
-                    value={formData.departmentName}
-                    onChange={handleChange}
-                    placeholder="Enter Department Name"
-                  />
-                </div>
-                <div className="col-md-6">
+
+                <div className="col-md-4">
                   <label className="form-label fw-semibold">Reporting Manager</label>
                   <input 
                     type="text" 
-                    className="form-control"
-                    name="reportingManager"
-                    value={formData.reportingManager}
-                    onChange={handleChange}
-                    placeholder="Enter Reporting Manager"
+                    className="form-control bg-light"
+                    value={formData.reportingManagerName}
+                    disabled
                   />
                 </div>
-                <div className="col-12">
-                  <label className="form-label fw-semibold">Project Name</label>
+
+                <div className="col-md-6">
+                  <label className="form-label fw-semibold">Primary Contact</label>
                   <input 
-                    type="text" 
-                    className="form-control"
-                    name="projectName"
-                    value={formData.projectName}
-                    onChange={handleChange}
-                    placeholder="Enter Project Name"
+                    type="tel" 
+                    className="form-control bg-light"
+                    value={formData.contact1}
+                    disabled
+                  />
+                </div>
+                
+                <div className="col-md-6">
+                  <label className="form-label fw-semibold">Secondary Contact</label>
+                  <input 
+                    type="tel" 
+                    className="form-control bg-light"
+                    value={formData.contact2}
+                    disabled
+                  />
+                </div>
+
+                <div className="col-md-6">
+                  <label className="form-label fw-semibold">Primary Email</label>
+                  <input 
+                    type="email" 
+                    className="form-control bg-light"
+                    value={formData.mailId1}
+                    disabled
+                  />
+                </div>
+                
+                <div className="col-md-6">
+                  <label className="form-label fw-semibold">Secondary Email</label>
+                  <input 
+                    type="email" 
+                    className="form-control bg-light"
+                    value={formData.mailId2}
+                    disabled
                   />
                 </div>
               </div>
 
-              {/* Insurance Policy Details */}
+              {/* Insurance Policy Details - EDITABLE */}
               <div className="row g-3 mb-4">
                 <div className="col-12 mt-4">
                   <h5 className="fw-bold text-primary mb-3">Insurance Policy Details</h5>
+                  {isHR ? (
+                    <small className="text-success">
+                      <i className="bi bi-pencil me-1"></i>
+                      You can edit these fields
+                    </small>
+                  ) : (
+                    <small className="text-muted">View only</small>
+                  )}
                 </div>
                 <div className="col-md-6">
                   <label className="form-label fw-semibold">Insurance Provider</label>
@@ -301,6 +447,7 @@ function Insurance() {
                     value={formData.insuranceProvider}
                     onChange={handleChange}
                     placeholder="Enter Insurance Provider Name"
+                    disabled={!isHR}
                   />
                 </div>
                 <div className="col-md-6">
@@ -312,6 +459,7 @@ function Insurance() {
                     value={formData.policyNumber}
                     onChange={handleChange}
                     placeholder="Enter Policy Number"
+                    disabled={!isHR}
                   />
                 </div>
                 <div className="col-md-6">
@@ -321,6 +469,7 @@ function Insurance() {
                     name="policyType"
                     value={formData.policyType}
                     onChange={handleChange}
+                    disabled={!isHR}
                   >
                     <option value="">Select Policy Type</option>
                     <option value="Health Insurance">Health Insurance</option>
@@ -344,6 +493,7 @@ function Insurance() {
                       placeholder="0.00"
                       step="1000"
                       min="0"
+                      disabled={!isHR}
                     />
                   </div>
                 </div>
@@ -360,6 +510,7 @@ function Insurance() {
                       placeholder="0.00"
                       step="100"
                       min="0"
+                      disabled={!isHR}
                     />
                   </div>
                 </div>
@@ -370,6 +521,7 @@ function Insurance() {
                     name="policyStatus"
                     value={formData.policyStatus}
                     onChange={handleChange}
+                    disabled={!isHR}
                   >
                     <option value="Active">Active</option>
                     <option value="Expired">Expired</option>
@@ -390,6 +542,7 @@ function Insurance() {
                     name="policyStartDate"
                     value={formData.policyStartDate}
                     onChange={handleChange}
+                    disabled={!isHR}
                   />
                 </div>
                 <div className="col-md-6">
@@ -400,6 +553,7 @@ function Insurance() {
                     name="policyEndDate"
                     value={formData.policyEndDate}
                     onChange={handleChange}
+                    disabled={!isHR}
                   />
                   {remainingDays !== null && (
                     <small className={`mt-1 d-block ${remainingDays < 30 ? 'text-danger' : remainingDays < 90 ? 'text-warning' : 'text-success'}`}>
@@ -445,6 +599,7 @@ function Insurance() {
                     value={formData.nomineeDetails}
                     onChange={handleChange}
                     placeholder="Nominee Name"
+                    disabled={!isHR}
                   />
                 </div>
                 <div className="col-md-6">
@@ -454,6 +609,7 @@ function Insurance() {
                     name="nomineeRelation"
                     value={formData.nomineeRelation}
                     onChange={handleChange}
+                    disabled={!isHR}
                   >
                     <option value="">Select Relation</option>
                     <option value="Spouse">Spouse</option>
@@ -475,6 +631,7 @@ function Insurance() {
                     value={formData.nomineeContactNumber}
                     onChange={handleChange}
                     placeholder="Enter Contact Number"
+                    disabled={!isHR}
                   />
                 </div>
               </div>
@@ -494,6 +651,7 @@ function Insurance() {
                     onChange={handleChange}
                     placeholder="0"
                     min="0"
+                    disabled={!isHR}
                   />
                 </div>
                 <div className="col-12">
@@ -505,6 +663,7 @@ function Insurance() {
                     onChange={handleChange}
                     rows="3"
                     placeholder="List all dependents covered under this policy with their relationship (e.g., Spouse: Name, Child: Name)"
+                    disabled={!isHR}
                   />
                 </div>
               </div>
@@ -523,6 +682,7 @@ function Insurance() {
                     onChange={handleChange}
                     rows="3"
                     placeholder="Enter claim history details if any"
+                    disabled={!isHR}
                   />
                 </div>
                 <div className="col-12">
@@ -534,6 +694,7 @@ function Insurance() {
                     onChange={handleChange}
                     rows="3"
                     placeholder="Any additional notes or remarks"
+                    disabled={!isHR}
                   />
                 </div>
               </div>

@@ -41,7 +41,16 @@ function Departments() {
       
       if (response.ok) {
         const data = await response.json();
-        setDepartments(data.data || []);
+        // Map database columns to expected format
+        const mappedDepts = data.data.map(dept => ({
+          dept_id: dept.id,
+          dept_name: dept.name,
+          head_id: dept.head_id,
+          head_name: dept.head_name,
+          created_at: dept.created_at,
+          updated_at: dept.updated_at
+        }));
+        setDepartments(mappedDepts);
       }
     } catch (error) {
       console.error('Error fetching departments:', error);
@@ -114,7 +123,7 @@ function Departments() {
       const token = sessionStorage.getItem('token');
       const url = editingDept 
         ? `${API_BASE_URL}/api/departments/${editingDept.dept_id}`
-        : `${API_BASE_URL}/api/departments `;
+        : `${API_BASE_URL}/api/departments`;
       
       const response = await fetch(url, {
         method: editingDept ? 'PUT' : 'POST',

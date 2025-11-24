@@ -92,8 +92,9 @@ function BankDetails() {
         
         // All data comes from the backend already combined
         const transformedData = {
-          // From employee_details (prefilled and disabled)
-          photo: bankInfo.photo || INITIAL_PHOTO,
+          photo: bankInfo.photo 
+            ? (bankInfo.photo.startsWith('http') ? bankInfo.photo : `${API_BASE_URL}${bankInfo.photo}`)
+            : INITIAL_PHOTO,
           empId: bankInfo.empId || "",
           empName: bankInfo.empName || "",
           dob: formatDateForInput(bankInfo.dob) || "",

@@ -99,7 +99,9 @@ function JoiningDetails() {
         const data = joiningData.data;
         
         const transformedData = {
-          photo: data.photo || INITIAL_PHOTO,
+          photo: data.photo 
+          ? (data.photo.startsWith('http') ? data.photo : `${API_BASE_URL}${data.photo}`)
+          : INITIAL_PHOTO,
           empId: data.empId || "",
           fullName: data.fullName || "",
           contact1: data.contact1 || "",

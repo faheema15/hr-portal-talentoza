@@ -317,7 +317,7 @@ function Teams() {
                     {filteredTeams.length > 0 ? (
                       filteredTeams.map((team) => (
                         <tr key={team.team_id}>
-                          <td className="fw-semibold text-muted">#{team.team_id}</td>
+                          <td className="fw-semibold text-muted">{team.team_id}</td>
                           <td className="fw-semibold text-primary">{team.team_name}</td>
                           <td>
                             {team.team_head_name || 'Not Assigned'}

@@ -1,8 +1,9 @@
+//backend/routes/leaveRoutes.js
 const express = require('express');
 const router = express.Router();
 const leaveController = require('../controllers/leaveController');
 
-// Create new leave record
+// Create new leave record (triggers email)
 router.post('/', leaveController.createLeave);
 
 // Get all leave records
@@ -32,7 +33,7 @@ router.get('/:id/statistics', leaveController.getLeaveStatistics);
 // Update leave record
 router.put('/:id', leaveController.updateLeave);
 
-// Update leave status only
+// Update leave status with email notification
 router.patch('/:id/status', leaveController.updateLeaveStatus);
 
 // Delete leave record

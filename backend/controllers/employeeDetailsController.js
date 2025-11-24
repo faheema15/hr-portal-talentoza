@@ -58,14 +58,10 @@ exports.createEmployee = async (req, res) => {
     // For now, we'll store it in a JSON field or create a temp table
     // Let's create a pending_signups table entry
     await client.query(
-      'INSERT INTO pending_signups (emp_id, assigned_role) VALUES ($1, $2)',
-      [emp_id, user_role]
+      'INSERT INTO pending_signups (emp_id, full_name, email, assigned_role, designation) VALUES ($1, $2, $3, $4, $5)',
+      [emp_id, full_name, email, user_role, designation]
     );
-    
-    await client.query(
-  'INSERT INTO pending_signups (emp_id, assigned_role) VALUES ($1, $2)',
-  [emp_id, user_role]
-);
+  
     
     // Auto-create related records
     await client.query(
