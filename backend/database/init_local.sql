@@ -365,6 +365,28 @@ CREATE TABLE claim_history (
 );
 
 
+-- 23. CREATE TABLE offer_letters (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    mobile VARCHAR(20),
+    address TEXT,
+    email VARCHAR(255) NOT NULL,
+    employment_type VARCHAR(50),
+    role VARCHAR(255),
+    salary DECIMAL(12, 2),
+    offer_letter_pdf VARCHAR(500),
+    sent_to_email VARCHAR(255),
+    cc_email VARCHAR(255),
+    sent_date TIMESTAMP,
+    status VARCHAR(20) DEFAULT 'Draft' CHECK (status IN ('Draft', 'Sent', 'Failed')),
+    candidate_response VARCHAR(20) DEFAULT 'Pending' CHECK (candidate_response IN ('Accepted', 'Rejected', 'Pending')),
+    response_date TIMESTAMP,
+    joining_letter_url VARCHAR(500);
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
 -- ======================================================
 -- INDEXES
 -- ======================================================
@@ -384,6 +406,8 @@ CREATE INDEX idx_project_assignments_project_id ON project_assignments(project_i
 CREATE INDEX idx_project_assignments_emp_id ON project_assignments(emp_id);
 CREATE INDEX idx_team_members_team_id ON team_members(team_id);
 CREATE INDEX idx_team_members_emp_id ON team_members(emp_id);
+CREATE INDEX idx_offer_letters_email ON offer_letters(email);
+CREATE INDEX idx_offer_letters_status ON offer_letters(status);
 
 
 -- ======================================================
@@ -425,7 +449,7 @@ CREATE TRIGGER update_insurance_updated_at BEFORE UPDATE ON insurance FOR EACH R
 CREATE TRIGGER update_dependent_details_updated_at BEFORE UPDATE ON dependent_details FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_claim_history_updated_at BEFORE UPDATE ON claim_history FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_pending_signups_updated_at BEFORE UPDATE ON pending_signups FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
+CREATE TRIGGER update_offer_letters_updated_at BEFORE UPDATE ON offer_letters FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ======================================================
 -- DEFAULT ADMIN USER

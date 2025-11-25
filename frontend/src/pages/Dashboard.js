@@ -17,53 +17,33 @@ function Dashboard() {
     { id: 1, title: "Employee Details", icon: "🧑‍💼", path: "/employee-details", color: "#4F46E5", useEmployeeList: true }, 
     { id: 2, title: "Joining Details", icon: "📝", path: "/joining-details", color: "#7C3AED", useEmployeeList: true }, 
     { id: 3, title: "Bank Details", icon: "🏦", path: "/bank-details", color: "#2563EB", useEmployeeList: true }, 
-    { 
-      id: 4, 
-      title: "BGV", 
-      icon: "✓", 
-      path: "/bgv", 
-      color: "#0891B2", 
-      allowedRoles: ['HR', 'manager', 'skip_level_manager'], 
-      useEmployeeList: true 
-    },
+    { id: 4, title: "BGV", icon: "✓", path: "/bgv", color: "#0891B2", allowedRoles: ['HR', 'manager', 'skip_level_manager'], useEmployeeList: true },
     { id: 5, title: "Projects", icon: "🔧", path: "/projects", color: "#059669", useEmployeeList: false }, 
     { id: 6, title: "Leave", icon: "🌴", path: "/leave", color: "#DC2626", useEmployeeList: true }, 
     { id: 7, title: "Attendance", icon: "📅", path: "/attendance", color: "#EA580C", useEmployeeList: true }, 
     { id: 8, title: "Salary", icon: "💰", path: "/salary", color: "#CA8A04", useEmployeeList: true }, 
     { id: 9, title: "Insurance", icon: "🛡️", path: "/insurance", color: "#DB2777", useEmployeeList: true }, 
     { id: 10, title: "Departments", icon: "🏢", path: "/departments", color: "#16A34A", allowedRoles: ['HR', 'skip_level_manager'], useEmployeeList: false }, 
-    { id: 11, title: "Teams", icon: "👥", path: "/teams", color: "#0D9488", allowedRoles: ['HR', 'manager', 'skip_level_manager'], useEmployeeList: false }
+    { id: 11, title: "Teams", icon: "👥", path: "/teams", color: "#0D9488", allowedRoles: ['HR', 'manager', 'skip_level_manager'], useEmployeeList: false },
+    { id: 12, title: "Offer Letter", icon: "📄", path: "/offer-letter", color: "#8B5CF6", allowedRoles: ['HR'], useEmployeeList: false }
   ];
 
   // Filter menu items based on user role
-  const menuItems = allMenuItems.filter(item => {
+   const menuItems = allMenuItems.filter(item => {
     const userRole = currentUser?.role;
-    
-    console.log(`Checking item: ${item.title}, User Role: ${userRole}, Allowed Roles:`, item.allowedRoles);
-    
-    // Check if item has role restrictions
     if (item.allowedRoles && !item.allowedRoles.includes(userRole)) {
-      console.log(`Filtering out ${item.title} - role not allowed`);
       return false;
     }
-    
     return true;
   });
 
-  console.log('Filtered menu items:', menuItems.map(i => i.title));
-
   const handleNavigation = (path, useEmployeeList) => {
-    console.log(`Navigating to: ${path}, useEmployeeList: ${useEmployeeList}`);
-    
-    // If useEmployeeList is false, go directly to the page
     if (useEmployeeList === false) {
       navigate(path);
       return;
     }
     
-    // For employee role, append their empId to the path
     if (currentUser?.role === 'employee' && currentUser?.emp_id) {
-      console.log(`Employee navigation: ${path}/${currentUser.emp_id}`);
       navigate(`${path}/${currentUser.emp_id}`);
     } else {
       navigate(path);
@@ -86,7 +66,6 @@ function Dashboard() {
 
   return (
     <div className="min-vh-100 bg-light">
-      {/* Header */}
       <nav className="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div className="container-fluid px-4">
           <span className="navbar-brand mb-0 h1 fw-bold">
@@ -104,7 +83,6 @@ function Dashboard() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <div className="container py-5">
         <div className="row mb-4">
           <div className="col">
@@ -117,7 +95,6 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Menu Grid */}
         <div className="row g-4">
           {menuItems.map((item) => (
             <div key={item.id} className="col-12 col-sm-6 col-lg-4">
@@ -161,10 +138,8 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Custom Logout Modal */}
       {showLogoutModal && (
         <>
-          {/* Backdrop */}
           <div 
             className="position-fixed top-0 start-0 w-100 h-100 bg-dark"
             style={{ 
@@ -175,7 +150,6 @@ function Dashboard() {
             onClick={handleLogoutCancel}
           />
           
-          {/* Modal */}
           <div 
             className="position-fixed top-50 start-50 translate-middle"
             style={{ 
@@ -187,7 +161,6 @@ function Dashboard() {
           >
             <div className="card border-0 shadow-lg">
               <div className="card-body p-4">
-                {/* Icon */}
                 <div className="text-center mb-3">
                   <div 
                     className="rounded-circle d-inline-flex align-items-center justify-content-center"
@@ -202,15 +175,11 @@ function Dashboard() {
                   </div>
                 </div>
 
-                {/* Title */}
                 <h5 className="text-center fw-bold mb-2">Logout Confirmation</h5>
-                
-                {/* Message */}
                 <p className="text-center text-muted mb-4">
                   Are you sure you want to logout from your account?
                 </p>
 
-                {/* Buttons */}
                 <div className="d-flex gap-2">
                   <button 
                     className="btn btn-outline-secondary flex-fill py-2"
@@ -229,7 +198,6 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* CSS Animations */}
           <style>{`
             @keyframes fadeIn {
               from { opacity: 0; }

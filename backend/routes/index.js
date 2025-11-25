@@ -19,7 +19,9 @@ const salaryRoutes = require('./salaryRoutes');
 const bankDetailsRoutes = require('./bankDetailsRoutes');
 const bgvRoutes = require('./bgvRoutes');
 const insuranceRoutes = require('./insuranceRoutes');
+const offerLetterRoutes = require('./offerLetterRoutes');
 const uploadRoutes = require('./uploadRoutes');
+
 
 // Public routes
 router.use('/auth', authRoutes);
@@ -39,6 +41,7 @@ router.use('/bank-details', authController.verifyToken, require('./bankDetailsRo
 router.use('/bgv', authController.verifyToken, require('./bgvRoutes'));
 router.use('/attendance', authController.verifyToken, require('./attendanceRoutes'));
 router.use('/insurance', authController.verifyToken, require('./insuranceRoutes'));
+router.use('/offer-letters', offerLetterRoutes);
 router.use('/upload', uploadRoutes);
 
 module.exports = router;

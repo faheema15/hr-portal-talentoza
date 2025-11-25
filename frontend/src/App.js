@@ -16,6 +16,7 @@ import Salary from "./pages/Salary";
 import Insurance from "./pages/Insurance";
 import Departments from './pages/Departments';
 import Teams from './pages/Teams';
+import OfferLetter from "./pages/OfferLetter";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RouteHandler from "./components/RouteHandler";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
@@ -222,6 +223,17 @@ function App() {
             <ProtectedRoute>
               <RoleProtectedRoute allowedRoles={['HR', 'manager', 'skip_level_manager']}>
                 <Teams />
+              </RoleProtectedRoute>
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/offer-letter" 
+          element={
+            <ProtectedRoute>
+              <RoleProtectedRoute allowedRoles={['HR']}>
+                <OfferLetter />
               </RoleProtectedRoute>
             </ProtectedRoute>
           } 
