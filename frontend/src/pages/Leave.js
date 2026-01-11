@@ -766,16 +766,6 @@ function Leave() {
             )}
           </div>
         </div>
-
-        <div className="modal-footer">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setShowLeavePolicy(false)}
-          >
-            Close
-          </button>
-        </div>
       </div>
     </div>
   </div>

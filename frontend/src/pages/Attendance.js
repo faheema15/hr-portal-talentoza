@@ -26,13 +26,10 @@ function Attendance() {
     regularisationDays: ""
   });
 
-  // Initialize calendar with current month
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   
-  // Calendar attendance data - stores date as key and status as value
   const [attendanceData, setAttendanceData] = useState({});
-
   const [originalData, setOriginalData] = useState(formData);
   const [hasChanges, setHasChanges] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(INITIAL_PHOTO);
@@ -41,6 +38,16 @@ function Attendance() {
 
   const currentUser = getCurrentUser();
   const isHR = currentUser?.role === 'HR';
+
+  // Government holidays (can be customized)
+  const getGovernmentHolidays = (year) => {
+    return [
+      `${year}-01-26`, // Republic Day
+      `${year}-08-15`, // Independence Day
+      `${year}-10-02`, // Gandhi Jayanti
+      `${year}-12-25`  // Christmas
+    ];
+  };
 
   const fetchAttendanceForMonth = useCallback((month, year) => {
     const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
@@ -157,7 +164,6 @@ function Attendance() {
         return;
       }
 
-      // Update employee details
       const empUrl = isNewEntry 
         ? `${API_BASE_URL}/api/attendance`
         : `${API_BASE_URL}/api/attendance/${id}`;
@@ -270,32 +276,33 @@ function Attendance() {
   };
 
   const handleDateClick = (day) => {
-    if (!isHR) return; // Only HR can mark attendance
+    if (!isHR) return;
     
     const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const currentStatus = attendanceData[dateKey];
-    
-    // Cycle through: undefined -> present -> absent -> leave -> undefined
-    let newStatus;
-    if (!currentStatus) {
-      newStatus = "present";
-    } else if (currentStatus === "present") {
-      newStatus = "absent";
-    } else if (currentStatus === "absent") {
-      newStatus = "leave";
-    } else {
-      newStatus = undefined;
+    const holidays = getGovernmentHolidays(currentYear);
+    const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
+    const isSunday = dayOfWeek === 0;
+    const isHoliday = holidays.includes(dateKey);
+
+    // Can't change Sundays or holidays
+    if (isSunday || isHoliday) {
+      alert("Cannot change attendance for Sundays and Government Holidays");
+      return;
     }
 
-    setAttendanceData(prev => {
-      const newData = { ...prev };
-      if (newStatus) {
-        newData[dateKey] = newStatus;
-      } else {
-        delete newData[dateKey];
-      }
-      return newData;
-    });
+    // Cycle through: present -> absent -> present
+    let newStatus;
+    if (currentStatus === "present") {
+      newStatus = "absent";
+    } else {
+      newStatus = "present";
+    }
+
+    setAttendanceData(prev => ({
+      ...prev,
+      [dateKey]: newStatus
+    }));
     setHasChanges(true);
   };
 
@@ -304,13 +311,16 @@ function Attendance() {
     return attendanceData[dateKey];
   };
 
-  const getDateColor = (status) => {
-    switch(status) {
-      case "present": return "#22c55e"; // green
-      case "absent": return "#ef4444"; // red
-      case "leave": return "#eab308"; // yellow
-      default: return "transparent";
-    }
+  const getDateColor = (day, status) => {
+    const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const holidays = getGovernmentHolidays(currentYear);
+    const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
+
+    if (dayOfWeek === 0) return "#eab308"; // Sunday = yellow
+    if (holidays.includes(dateKey)) return "#eab308"; // Holiday = yellow
+    if (status === "present") return "#22c55e"; // Green
+    if (status === "absent") return "#ef4444"; // Red
+    return "transparent";
   };
 
   const renderCalendar = () => {
@@ -318,31 +328,33 @@ function Attendance() {
     const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
     const days = [];
 
-    // Empty cells for days before month starts
     for (let i = 0; i < firstDay; i++) {
-      days.push(
-        <div key={`empty-${i}`} className="p-2"></div>
-      );
+      days.push(<div key={`empty-${i}`} className="p-2"></div>);
     }
 
-    // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const status = getDateStatus(day);
-      const bgColor = getDateColor(status);
+      const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const holidays = getGovernmentHolidays(currentYear);
+      const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
+      const isSunday = dayOfWeek === 0;
+      const isHoliday = holidays.includes(dateKey);
+      const bgColor = getDateColor(day, status);
       const isToday = day === new Date().getDate() && 
                       currentMonth === new Date().getMonth() && 
                       currentYear === new Date().getFullYear();
+      const isClickable = isHR && !isSunday && !isHoliday;
 
       days.push(
         <div
           key={day}
           className="p-2 text-center position-relative"
           style={{
-            cursor: isHR ? "pointer" : "default",
+            cursor: isClickable ? "pointer" : "default",
             backgroundColor: bgColor,
             border: isToday ? "2px solid #3b82f6" : "1px solid #e5e7eb",
-            fontWeight: status ? "600" : "normal",
-            color: status ? "#fff" : "#000",
+            fontWeight: status || isSunday || isHoliday ? "600" : "normal",
+            color: (status || isSunday || isHoliday) ? "#fff" : "#000",
             minHeight: "50px",
             display: "flex",
             alignItems: "center",
@@ -351,15 +363,14 @@ function Attendance() {
             transition: "all 0.2s"
           }}
           onClick={() => handleDateClick(day)}
+          title={isSunday ? "Sunday" : isHoliday ? "Government Holiday" : ""}
           onMouseEnter={(e) => {
-            if (!status && isHR) {
-              e.currentTarget.style.backgroundColor = "#f3f4f6";
+            if (isClickable && status !== "absent") {
+              e.currentTarget.style.opacity = "0.8";
             }
           }}
           onMouseLeave={(e) => {
-            if (!status) {
-              e.currentTarget.style.backgroundColor = "transparent";
-            }
+            e.currentTarget.style.opacity = "1";
           }}
         >
           {day}
@@ -370,24 +381,39 @@ function Attendance() {
     return days;
   };
 
-  // Calculate attendance statistics
+  // Calculate attendance statistics (UPDATED)
   const calculateStats = () => {
     const daysInMonth = getDaysInMonth(currentMonth, currentYear);
-    let present = 0, absent = 0, leave = 0;
+    const holidays = getGovernmentHolidays(currentYear);
+    let daysPresent = 0, daysLeave = 0, totalWorkingDays = 0;
 
     for (let day = 1; day <= daysInMonth; day++) {
+      const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
       const status = getDateStatus(day);
-      if (status === "present") present++;
-      else if (status === "absent") absent++;
-      else if (status === "leave") leave++;
+
+      // Count working days (Mon-Sat, excluding holidays)
+      if (dayOfWeek !== 0 && !holidays.includes(dateKey)) {
+        totalWorkingDays++;
+        if (status === "present") {
+          daysPresent++;
+        } else if (status === "absent") {
+          daysLeave++;
+        }
+      }
     }
 
-    return { present, absent, leave, total: daysInMonth };
+    return { 
+      daysPresent, 
+      daysLeave, 
+      totalWorkingDays, 
+      totalDays: daysInMonth,
+      attendancePercentage: totalWorkingDays > 0 ? ((daysPresent / totalWorkingDays) * 100).toFixed(2) : 0
+    };
   };
 
   const stats = calculateStats();
 
-  // Loading state
   if (loading) {
     return (
       <div className="min-vh-100 bg-light d-flex align-items-center justify-content-center">
@@ -401,16 +427,12 @@ function Attendance() {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="min-vh-100 bg-light">
         <nav className="navbar navbar-dark bg-dark shadow-sm">
           <div className="container-fluid px-4">
-            <button 
-              className="btn btn-outline-light btn-sm"
-              onClick={() => navigate(-1)}
-            >
+            <button className="btn btn-outline-light btn-sm" onClick={() => navigate(-1)}>
               ← Back 
             </button>
             <span className="navbar-brand mb-0 h1 fw-bold">
@@ -426,10 +448,7 @@ function Attendance() {
                 <i className="bi bi-exclamation-triangle-fill fs-1 d-block mb-3"></i>
                 <h5>Error Loading Data</h5>
                 <p>{error}</p>
-                <button 
-                  className="btn btn-primary mt-3"
-                  onClick={() => navigate("/attendance")}
-                >
+                <button className="btn btn-primary mt-3" onClick={() => navigate("/attendance")}>
                   Back to List
                 </button>
               </div>
@@ -442,13 +461,9 @@ function Attendance() {
 
   return (
     <div className="min-vh-100 bg-light">
-      {/* Header */}
       <nav className="navbar navbar-dark bg-dark shadow-sm">
         <div className="container-fluid px-4">
-          <button 
-            className="btn btn-outline-light btn-sm"
-            onClick={() => navigate(-1)}
-          >
+          <button className="btn btn-outline-light btn-sm" onClick={() => navigate(-1)}>
             ← Back 
           </button>
           <span className="navbar-brand mb-0 h1 fw-bold">
@@ -458,13 +473,11 @@ function Attendance() {
         </div>
       </nav>
 
-      {/* Form Content */}
       <div className="container py-5">
         <div className="card shadow-sm border-0">
           <div className="card-body p-4 p-md-5">
             <form onSubmit={handleSubmit}>
               
-              {/* PHOTO SECTION - VIEW ONLY */}
               <div className="row mb-5">
                 <div className="col-12 text-center mb-4">
                   <img 
@@ -476,7 +489,6 @@ function Attendance() {
                 </div>
               </div>
 
-              {/* Basic Information Section */}
               <div className="row g-3 mb-4">
                 <div className="col-12">
                   <h5 className="fw-bold text-primary mb-4">Basic Information</h5>
@@ -484,107 +496,53 @@ function Attendance() {
                 
                 <div className="col-md-6">
                   <label className="form-label fw-semibold">Employee ID</label>
-                  <input 
-                    type="text" 
-                    className="form-control bg-light fw-bold"
-                    value={formData.empId}
-                    disabled 
-                  />
+                  <input type="text" className="form-control bg-light fw-bold" value={formData.empId} disabled />
                 </div>
 
                 <div className="col-md-6">
                   <label className="form-label fw-semibold">Employee Name</label>
-                  <input 
-                    type="text" 
-                    className="form-control bg-light"
-                    value={formData.empName}
-                    disabled
-                  />
+                  <input type="text" className="form-control bg-light" value={formData.empName} disabled />
                 </div>
 
                 <div className="col-md-4">
                   <label className="form-label fw-semibold">Designation</label>
-                  <input 
-                    type="text" 
-                    className="form-control bg-light"
-                    value={formData.designation}
-                    disabled
-                  />
+                  <input type="text" className="form-control bg-light" value={formData.designation} disabled />
                 </div>
 
                 <div className="col-md-4">
                   <label className="form-label fw-semibold">Department</label>
-                  <input 
-                    type="text" 
-                    className="form-control bg-light"
-                    value={formData.department}
-                    disabled
-                  />
+                  <input type="text" className="form-control bg-light" value={formData.department} disabled />
                 </div>
 
                 <div className="col-md-4">
                   <label className="form-label fw-semibold">Reporting Manager</label>
-                  <input 
-                    type="text" 
-                    className="form-control bg-light"
-                    value={formData.reportingManagerName}
-                    disabled
-                  />
+                  <input type="text" className="form-control bg-light" value={formData.reportingManagerName} disabled />
                 </div>
 
                 <div className="col-md-6">
                   <label className="form-label fw-semibold">Primary Contact</label>
-                  <input 
-                    type="tel" 
-                    className="form-control bg-light"
-                    value={formData.contact1}
-                    disabled
-                  />
+                  <input type="tel" className="form-control bg-light" value={formData.contact1} disabled />
                 </div>
                 
                 <div className="col-md-6">
                   <label className="form-label fw-semibold">Secondary Contact</label>
-                  <input 
-                    type="tel" 
-                    className="form-control bg-light"
-                    value={formData.contact2}
-                    disabled
-                  />
+                  <input type="tel" className="form-control bg-light" value={formData.contact2} disabled />
                 </div>
 
                 <div className="col-md-6">
                   <label className="form-label fw-semibold">Primary Email</label>
-                  <input 
-                    type="email" 
-                    className="form-control bg-light"
-                    value={formData.mailId1}
-                    disabled
-                  />
+                  <input type="email" className="form-control bg-light" value={formData.mailId1} disabled />
                 </div>
                 
                 <div className="col-md-6">
                   <label className="form-label fw-semibold">Secondary Email</label>
-                  <input 
-                    type="email" 
-                    className="form-control bg-light"
-                    value={formData.mailId2}
-                    disabled
-                  />
+                  <input type="email" className="form-control bg-light" value={formData.mailId2} disabled />
                 </div>
               </div>
 
-              {/* Shift Details - EDITABLE BY HR */}
               <div className="row g-3 mb-4">
                 <div className="col-12 mt-4">
                   <h5 className="fw-bold text-primary mb-3">Shift Information</h5>
-                  {isHR ? (
-                    <small className="text-success">
-                      <i className="bi bi-pencil me-1"></i>
-                      You can edit these fields
-                    </small>
-                  ) : (
-                    <small className="text-muted">View only</small>
-                  )}
                 </div>
                 <div className="col-md-6">
                   <label className="form-label fw-semibold">Shift Timings</label>
@@ -613,7 +571,6 @@ function Attendance() {
                 </div>
               </div>
 
-              {/* Attendance Calendar */}
               <div className="row g-3 mb-4">
                 <div className="col-12 mt-4">
                   <div className="d-flex justify-content-between align-items-center mb-3">
@@ -629,36 +586,26 @@ function Attendance() {
                       </div>
                       <div className="d-flex align-items-center gap-2">
                         <div style={{ width: "20px", height: "20px", backgroundColor: "#eab308", borderRadius: "4px" }}></div>
-                        <small>Leave</small>
+                        <small>Sunday/Holiday</small>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Calendar Navigation */}
                 <div className="col-12">
                   <div className="card border">
                     <div className="card-header bg-light d-flex justify-content-between align-items-center">
-                      <button 
-                        type="button" 
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={handlePrevMonth}
-                      >
+                      <button type="button" className="btn btn-sm btn-outline-primary" onClick={handlePrevMonth}>
                         ← Previous
                       </button>
                       <h6 className="mb-0 fw-bold">
                         {monthNames[currentMonth]} {currentYear}
                       </h6>
-                      <button 
-                        type="button" 
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={handleNextMonth}
-                      >
+                      <button type="button" className="btn btn-sm btn-outline-primary" onClick={handleNextMonth}>
                         Next →
                       </button>
                     </div>
                     <div className="card-body p-3">
-                      {/* Day headers */}
                       <div className="d-grid mb-2" style={{ gridTemplateColumns: "repeat(7, 1fr)", gap: "4px" }}>
                         {dayNames.map(day => (
                           <div key={day} className="text-center fw-semibold text-muted p-2">
@@ -666,27 +613,25 @@ function Attendance() {
                           </div>
                         ))}
                       </div>
-                      {/* Calendar days */}
                       <div className="d-grid" style={{ gridTemplateColumns: "repeat(7, 1fr)", gap: "4px" }}>
                         {renderCalendar()}
                       </div>
                       <div className="mt-3 text-center">
                         <small className="text-muted">
-                          {isHR ? "Click on a date to mark attendance (Click multiple times to cycle: Present → Absent → Leave → None)" : "View only - Contact HR to update attendance"}
+                          {isHR ? "Click on a weekday to toggle: Present ↔ Absent" : "Contact HR to update attendance"}
                         </small>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Attendance Statistics */}
                 <div className="col-12 mt-4">
                   <h6 className="fw-bold mb-3">Monthly Summary</h6>
                   <div className="row g-3">
                     <div className="col-md-3">
                       <div className="card border-0 bg-success text-white">
                         <div className="card-body text-center">
-                          <h3 className="mb-0">{stats.present}</h3>
+                          <h3 className="mb-0">{stats.daysPresent}</h3>
                           <small>Days Present</small>
                         </div>
                       </div>
@@ -694,24 +639,24 @@ function Attendance() {
                     <div className="col-md-3">
                       <div className="card border-0 bg-danger text-white">
                         <div className="card-body text-center">
-                          <h3 className="mb-0">{stats.absent}</h3>
+                          <h3 className="mb-0">{stats.daysLeave}</h3>
                           <small>Days Absent</small>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="col-md-3">
-                      <div className="card border-0 bg-warning text-white">
-                        <div className="card-body text-center">
-                          <h3 className="mb-0">{stats.leave}</h3>
-                          <small>Days on Leave</small>
                         </div>
                       </div>
                     </div>
                     <div className="col-md-3">
                       <div className="card border-0 bg-info text-white">
                         <div className="card-body text-center">
-                          <h3 className="mb-0">{stats.total}</h3>
-                          <small>Total Days</small>
+                          <h3 className="mb-0">{stats.totalWorkingDays}</h3>
+                          <small>Total Working Days</small>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-md-3">
+                      <div className="card border-0 bg-primary text-white">
+                        <div className="card-body text-center">
+                          <h3 className="mb-0">{stats.attendancePercentage}%</h3>
+                          <small>Attendance %</small>
                         </div>
                       </div>
                     </div>
@@ -719,7 +664,6 @@ function Attendance() {
                 </div>
               </div>
 
-              {/* Action Buttons - Only for HR */}
               {isHR && (
                 <div className="row mt-5">
                   <div className="col-12">
@@ -730,18 +674,10 @@ function Attendance() {
                       </div>
                     )}
                     <div className="d-flex gap-3 justify-content-end">
-                      <button 
-                        type="button" 
-                        className="btn btn-secondary px-4"
-                        onClick={handleCancel}
-                      >
+                      <button type="button" className="btn btn-secondary px-4" onClick={handleCancel}>
                         Cancel
                       </button>
-                      <button 
-                        type="submit" 
-                        className="btn btn-primary px-4"
-                        disabled={!hasChanges}
-                      >
+                      <button type="submit" className="btn btn-primary px-4" disabled={!hasChanges}>
                         {isNewEntry ? "Save Attendance Details" : "Update Attendance Details"}
                       </button>
                     </div>

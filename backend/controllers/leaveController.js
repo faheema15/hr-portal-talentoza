@@ -1,4 +1,3 @@
-//backend/controllers/leaveController.js
 const Leave = require('../models/Leave');
 const pool = require('../config/database');
 const EmailService = require('../services/emailService');
@@ -6,13 +5,13 @@ const EmailService = require('../services/emailService');
 // Create new leave record
 exports.createLeave = async (req, res) => {
   try {
-    const { empId, leaveFromDate, leaveToDate, leaveApplyType, reasonForLeave } = req.body;
+    const { empId, leaveFromDate, leaveToDate, leaveApplyType, reasonForLeave, duration } = req.body;
 
     // Validate required fields
     if (!empId || !leaveFromDate || !leaveToDate || !leaveApplyType) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields'
+        message: 'Missing required fields: empId, leaveFromDate, leaveToDate, leaveApplyType'
       });
     }
 
@@ -37,14 +36,21 @@ exports.createLeave = async (req, res) => {
     const empData = empResult.rows[0];
 
     // Create leave record
-    const leave = await Leave.create(req.body);
+    const leave = await Leave.create({
+      empId,
+      leaveFromDate,
+      leaveToDate,
+      leaveApplyType,
+      reasonForLeave,
+      leaveApprovalStatus: 'Pending'
+    });
 
     try {
       // Send approval emails
       await EmailService.sendLeaveApprovalEmail(
         {
-          ...req.body,
-          _id: leave.id
+          ...leave,
+          duration
         },
         empData
       );
@@ -290,13 +296,13 @@ exports.getLeavesByDateRange = async (req, res) => {
 // Update leave status (with email notification)
 exports.updateLeaveStatus = async (req, res) => {
   try {
-    const { status } = req.body;
+    const { leaveApprovalStatus } = req.body;
     const leaveId = req.params.id;
     
-    if (!status || !['Pending', 'Approved', 'Rejected'].includes(status)) {
+    if (!leaveApprovalStatus || !['Pending', 'Approved', 'Rejected'].includes(leaveApprovalStatus)) {
       return res.status(400).json({
         success: false,
-        message: 'Valid status is required (Pending, Approved, Rejected)'
+        message: 'Valid leaveApprovalStatus is required (Pending, Approved, Rejected)'
       });
     }
 
@@ -319,22 +325,14 @@ exports.updateLeaveStatus = async (req, res) => {
     const leaveData = leaveResult.rows[0];
 
     // Update status
-    const updateQuery = `
-      UPDATE leave_applications 
-      SET status = $1, updated_at = CURRENT_TIMESTAMP 
-      WHERE id = $2 
-      RETURNING *
-    `;
-    
-    const updateResult = await pool.query(updateQuery, [status, leaveId]);
-    const updatedLeave = updateResult.rows[0];
+    const updatedLeave = await Leave.updateStatus(leaveId, leaveApprovalStatus);
 
     try {
       // Send confirmation email to employee
       await EmailService.sendLeaveApprovalConfirmation(
         leaveData,
         leaveData,
-        status
+        leaveApprovalStatus
       );
     } catch (emailError) {
       console.error('Email sending failed:', emailError);
@@ -342,7 +340,7 @@ exports.updateLeaveStatus = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Leave status updated to ${status}`,
+      message: `Leave status updated to ${leaveApprovalStatus}`,
       data: updatedLeave
     });
   } catch (error) {
@@ -358,7 +356,8 @@ exports.updateLeaveStatus = async (req, res) => {
 // Update leave record
 exports.updateLeave = async (req, res) => {
   try {
-    const leave = await Leave.update(req.params.id, req.body);
+    const leaveId = req.params.id;
+    const leave = await Leave.update(leaveId, req.body);
     if (!leave) {
       return res.status(404).json({
         success: false,
@@ -383,7 +382,8 @@ exports.updateLeave = async (req, res) => {
 // Delete leave record
 exports.deleteLeave = async (req, res) => {
   try {
-    const leave = await Leave.delete(req.params.id);
+    const leaveId = req.params.id;
+    const leave = await Leave.delete(leaveId);
     if (!leave) {
       return res.status(404).json({
         success: false,
@@ -409,7 +409,7 @@ exports.deleteLeave = async (req, res) => {
 exports.getLeaveBalance = async (req, res) => {
   try {
     const balance = await Leave.getLeaveBalance(req.params.id);
-    if (!balance) {
+    if (!balance || balance.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Leave balance not found'

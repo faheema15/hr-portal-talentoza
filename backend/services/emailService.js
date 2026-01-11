@@ -322,29 +322,41 @@ class EmailService {
   }
 
   static async sendOfferLetterEmail(candidateEmail, pdfBuffer, candidateName, ccEmail) {
-  try {
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: candidateEmail,
-      cc: ccEmail || '',
-      subject: `Offer Letter - ${candidateName}`,
-      html: this.generateOfferLetterEmailContent(candidateName),
-      attachments: [
-        {
-          filename: `offer-letter-${candidateName.replace(/\s+/g, '-')}.pdf`,
-          content: pdfBuffer,
-          contentType: 'application/pdf'
-        }
-      ]
-    };
+    try {
+      // Validate that we have a proper PDF buffer
+      if (!pdfBuffer || pdfBuffer.length === 0) {
+        throw new Error('PDF buffer is empty or invalid');
+      }
 
-    await transporter.sendMail(mailOptions);
-    console.log('✅ Offer letter email sent to:', candidateEmail, 'CC:', ccEmail);
-    return { success: true, recipient: candidateEmail, cc: ccEmail };
-  } catch (error) {
-    console.error('❌ Error sending offer letter email:', error);
-    throw error;
-  }
+      console.log('📧 Preparing email with PDF attachment');
+      console.log('   - To:', candidateEmail);
+      console.log('   - CC:', ccEmail || 'None');
+      console.log('   - PDF size:', pdfBuffer.length, 'bytes');
+
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: candidateEmail,
+        cc: ccEmail || undefined,
+        subject: `Offer Letter - ${candidateName}`,
+        html: this.generateOfferLetterEmailContent(candidateName),
+        attachments: [
+          {
+            filename: `offer-letter-${candidateName.replace(/\s+/g, '-')}.pdf`,
+            content: pdfBuffer, // This should be a Buffer
+            contentType: 'application/pdf'
+          }
+        ]
+      };
+
+      const info = await transporter.sendMail(mailOptions);
+      console.log('✅ Offer letter email sent successfully');
+      console.log('   - Message ID:', info.messageId);
+      
+      return { success: true, recipient: candidateEmail, cc: ccEmail, messageId: info.messageId };
+    } catch (error) {
+      console.error('❌ Error sending offer letter email:', error);
+      throw error;
+    }
   }
 
   static generateOfferLetterEmailContent(candidateName) {
@@ -384,7 +396,7 @@ class EmailService {
                 <p><strong>What's next?</strong></p>
                 <ul>
                   <li>Review the attached offer letter thoroughly</li>
-                  <li>Confirm your acceptance via email or portal</li>
+                  <li>Confirm your acceptance via email</li>
                   <li>Complete any pre-joining formalities as mentioned in the offer</li>
                   <li>Contact HR if you have any questions</li>
                 </ul>

@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 
-// Import routes
+// Import route modules
 const authRoutes = require('./authRoutes');
 const employeeDetailsRoutes = require('./employeeDetailsRoutes');
 const departmentRoutes = require('./departmentRoutes');
@@ -23,10 +23,10 @@ const offerLetterRoutes = require('./offerLetterRoutes');
 const uploadRoutes = require('./uploadRoutes');
 
 
-// Public routes
+// Public routes (NO authentication required)
 router.use('/auth', authRoutes);
 
-// Protected routes
+// Protected routes (authentication REQUIRED)
 router.use('/employee-details', authController.verifyToken, employeeDetailsRoutes);
 router.use('/departments', authController.verifyToken, departmentRoutes);
 router.use('/teams', authController.verifyToken, teamsRoutes);
@@ -34,14 +34,14 @@ router.use('/projects', authController.verifyToken, projectRoutes);
 router.use('/education', authController.verifyToken, educationRoutes);
 router.use('/certifications', authController.verifyToken, certificationRoutes);
 router.use('/research-papers', authController.verifyToken, researchPaperRoutes);
-router.use('/joining-details', authController.verifyToken, require('./joiningDetailsRoutes'));
-router.use('/leave', authController.verifyToken, require('./leaveRoutes'));
-router.use('/salary', authController.verifyToken, require('./salaryRoutes'));
-router.use('/bank-details', authController.verifyToken, require('./bankDetailsRoutes'));
-router.use('/bgv', authController.verifyToken, require('./bgvRoutes'));
-router.use('/attendance', authController.verifyToken, require('./attendanceRoutes'));
-router.use('/insurance', authController.verifyToken, require('./insuranceRoutes'));
-router.use('/offer-letters', offerLetterRoutes);
-router.use('/upload', uploadRoutes);
+router.use('/joining-details', authController.verifyToken, joiningDetailsRoutes);
+router.use('/leave', authController.verifyToken, leaveRoutes);
+router.use('/salary', authController.verifyToken, salaryRoutes);
+router.use('/bank-details', authController.verifyToken, bankDetailsRoutes);
+router.use('/bgv', authController.verifyToken, bgvRoutes);
+router.use('/attendance', authController.verifyToken, attendanceRoutes);
+router.use('/insurance', authController.verifyToken, insuranceRoutes);
+router.use('/offer-letters', authController.verifyToken, offerLetterRoutes);
+router.use('/upload', authController.verifyToken, uploadRoutes);
 
 module.exports = router;

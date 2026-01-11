@@ -365,7 +365,8 @@ CREATE TABLE claim_history (
 );
 
 
--- 23. CREATE TABLE offer_letters (
+-- 23. Offer letters 
+    CREATE TABLE offer_letters (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     mobile VARCHAR(20),
@@ -381,7 +382,7 @@ CREATE TABLE claim_history (
     status VARCHAR(20) DEFAULT 'Draft' CHECK (status IN ('Draft', 'Sent', 'Failed')),
     candidate_response VARCHAR(20) DEFAULT 'Pending' CHECK (candidate_response IN ('Accepted', 'Rejected', 'Pending')),
     response_date TIMESTAMP,
-    joining_letter_url VARCHAR(500);
+    joining_letter_url VARCHAR(500),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

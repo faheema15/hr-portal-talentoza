@@ -11,8 +11,35 @@ console.log('📝 Environment variables loaded');
 
 const app = express();
 
+// ============================================
+// CORS Configuration
+// ============================================
+const allowedOrigins = [
+  'http://localhost:3000',        // Local development
+  'http://localhost:5173',        // Vite dev server
+  process.env.FRONTEND_URL,       // Production frontend from .env
+].filter(Boolean); // Remove undefined values
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400, // 24 hours
+};
+
+app.use(cors(corsOptions));
+
+console.log('✅ CORS configured for origins:', allowedOrigins);
+
 // Middleware
-app.use(cors());
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
@@ -27,7 +54,6 @@ if (process.env.NODE_ENV !== 'production') {
   console.log('✅ Static file serving enabled at /uploads');
   console.log('📁 Uploads directory:', uploadsPath);
   
-  // Log all static file requests for debugging
   app.use('/uploads', (req, res, next) => {
     console.log(`📄 Static file request: ${req.url}`);
     next();
@@ -53,24 +79,18 @@ try {
 
 const PORT = process.env.PORT || 5000;
 
-// Start server with error handling
 const server = app.listen(PORT, () => {
   console.log(`\n✅ Server running on port ${PORT}`);
-  console.log(`📍 API available at http://localhost:${PORT}`);
-  console.log(`📚 API docs at http://localhost:${PORT}/api`);
   console.log('\nPress Ctrl+C to stop\n');
 }).on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
     console.error(`❌ Port ${PORT} is already in use`);
-    console.error('💡 Try: netstat -ano | findstr :5000');
-    console.error('💡 Or change PORT in .env file');
   } else {
     console.error('❌ Server error:', err);
   }
   process.exit(1);
 });
 
-// Handle uncaught errors
 process.on('uncaughtException', (err) => {
   console.error('❌ Uncaught Exception:', err);
   process.exit(1);
