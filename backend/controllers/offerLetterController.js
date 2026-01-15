@@ -3,28 +3,27 @@ const OfferLetter = require('../models/OfferLetter');
 const EmailService = require('../services/emailService');
 
 // Get skip level manager email by emp_id
-async function getSkipLevelManagerEmail(empId) {
+async function getSkipLevelManagerEmail() {
   try {
     const db = require('../config/database');
+    
+    // Get SkipManager email only (prioritize SkipManager over HR)
     const query = `
-      SELECT u.email, u.name
-      FROM users u
-      INNER JOIN employee_details ed ON u.id = ed.user_id
-      WHERE ed.emp_id = (
-        SELECT reporting_manager_id
-        FROM employee_details
-        WHERE emp_id = $1
-      )
+      SELECT email, name, role
+      FROM users
+      WHERE role = 'SkipManager'
+      AND is_active = true
+      LIMIT 1
     `;
     
-    const result = await db.query(query, [empId]);
+    const result = await db.query(query);
     
     if (result.rows.length > 0) {
       console.log('✅ Skip level manager found:', result.rows[0].email);
       return result.rows[0].email;
     }
     
-    console.warn('⚠️ No skip level manager found for emp_id:', empId);
+    console.warn('⚠️ No skip level manager found');
     return null;
   } catch (error) {
     console.error('❌ Error fetching skip level manager email:', error);
@@ -81,7 +80,7 @@ async function sendOfferLetterEmail(req, res) {
   try {
     console.log('📧 sendOfferLetterEmail - Request body:', req.body);
     
-    const { offerId, candidateEmail, candidateName, pdfBase64, pdfFileName, skipLevelManagerEmail } = req.body;
+    const { offerId, candidateEmail, candidateName, pdfBase64, pdfFileName } = req.body;
 
     // Validate required fields
     if (!offerId || !candidateEmail || !candidateName || !pdfBase64) {
@@ -100,7 +99,10 @@ async function sendOfferLetterEmail(req, res) {
       });
     }
 
-    console.log('📧 Sending email to:', candidateEmail, 'CC:', skipLevelManagerEmail);
+    // GET SKIP LEVEL MANAGER EMAIL AUTOMATICALLY
+    const skipLevelManagerEmail = await getSkipLevelManagerEmail();
+
+    console.log('📧 Sending email to:', candidateEmail, 'CC:', skipLevelManagerEmail || 'None');
     console.log('📄 PDF size:', Buffer.from(pdfBase64, 'base64').length, 'bytes');
 
     // Convert base64 to Buffer
@@ -109,9 +111,9 @@ async function sendOfferLetterEmail(req, res) {
     // Send email using EmailService
     await EmailService.sendOfferLetterEmail(
       candidateEmail,
-      pdfBuffer, // Now sending actual PDF buffer
+      pdfBuffer,
       candidateName,
-      skipLevelManagerEmail
+      skipLevelManagerEmail // Pass skip level manager email
     );
 
     // Update status using model

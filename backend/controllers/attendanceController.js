@@ -1,102 +1,49 @@
-const Leave = require('../models/Leave');
+const Attendance = require('../models/Attendance');
 const pool = require('../config/database');
-const EmailService = require('../services/emailService');
-const AttendanceService = require('../services/attendanceService');
 
-// Create new leave record
-exports.createLeave = async (req, res) => {
+// Create new attendance employee record
+exports.createAttendance = async (req, res) => {
   try {
-    const { empId, leaveFromDate, leaveToDate, leaveApplyType, reasonForLeave, duration } = req.body;
-
-    // Validate required fields
-    if (!empId || !leaveFromDate || !leaveToDate || !leaveApplyType) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields: empId, leaveFromDate, leaveToDate, leaveApplyType'
-      });
-    }
-
-    // Get employee details for email
-    const empQuery = `
-      SELECT 
-        ed.emp_id, ed.full_name, ed.email1, ed.email2,
-        ed.designation, d.name as department, ed.reporting_manager_id
-      FROM employee_details ed
-      LEFT JOIN departments d ON ed.department_id = d.id
-      WHERE ed.emp_id = $1
-    `;
-    const empResult = await pool.query(empQuery, [empId]);
-    
-    if (empResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Employee not found'
-      });
-    }
-
-    const empData = empResult.rows[0];
-
-    // Create leave record
-    const leave = await Leave.create({
-      empId,
-      leaveFromDate,
-      leaveToDate,
-      leaveApplyType,
-      reasonForLeave,
-      leaveApprovalStatus: 'Pending'
-    });
-
-    try {
-      // Send approval emails
-      await EmailService.sendLeaveApprovalEmail(
-        {
-          ...leave,
-          duration
-        },
-        empData
-      );
-    } catch (emailError) {
-      console.error('Email sending failed, but leave was created:', emailError);
-    }
-
+    const attendance = await Attendance.create(req.body);
     res.status(201).json({
       success: true,
-      message: 'Leave request created successfully. Approval emails sent.',
-      data: leave
+      message: 'Attendance record created successfully',
+      data: attendance
     });
   } catch (error) {
-    console.error('Error creating leave record:', error);
+    console.error('Error creating attendance record:', error);
     res.status(500).json({
       success: false,
-      message: 'Error creating leave record',
+      message: 'Error creating attendance record',
       error: error.message
     });
   }
 };
 
-// Get all leave records
-exports.getAllLeaves = async (req, res) => {
+// Get all attendance records
+exports.getAllAttendance = async (req, res) => {
   try {
-    const leaves = await Leave.findAll();
+    const attendance = await Attendance.findAll();
     res.status(200).json({
       success: true,
-      data: leaves
+      data: attendance
     });
   } catch (error) {
-    console.error('Error fetching leave records:', error);
+    console.error('Error fetching attendance records:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching leave records',
+      message: 'Error fetching attendance records',
       error: error.message
     });
   }
 };
 
-// Get leave by employee ID
-exports.getLeaveById = async (req, res) => {
+// Get attendance by employee ID
+exports.getAttendanceById = async (req, res) => {
   try {
     const empId = req.params.id;
     
+    // Fetch employee basic details
     const employeeQuery = `
       SELECT 
         ed.emp_id,
@@ -129,71 +76,28 @@ exports.getLeaveById = async (req, res) => {
     
     const employeeData = employeeResult.rows[0];
     
-    const leaveTypesQuery = `
-      SELECT 
-        leave_type,
-        allocated,
-        consumed,
-        remaining
-      FROM leave_types
-      WHERE emp_id = $1 AND year = EXTRACT(YEAR FROM CURRENT_DATE)
-    `;
-    
-    const leaveTypesResult = await pool.query(leaveTypesQuery, [empId]);
-    const leaveTypes = leaveTypesResult.rows;
-    
-    let sickLeave = leaveTypes.find(lt => lt.leave_type === 'Sick Leave') || {};
-    let rhLeave = leaveTypes.find(lt => lt.leave_type === 'RH') || {};
-    let plLeave = leaveTypes.find(lt => lt.leave_type === 'PL') || {};
-    
-    const leaveAppQuery = `
-      SELECT 
-        leave_type,
-        from_date,
-        to_date,
-        reason,
-        status
-      FROM leave_applications
-      WHERE emp_id = $1
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
-    
-    const leaveAppResult = await pool.query(leaveAppQuery, [empId]);
-    const leaveApp = leaveAppResult.rows[0] || {};
-    
+    // Combine all data
     const responseData = {
+      // Employee basic info (prefilled)
       empId: employeeData.emp_id,
       empName: employeeData.full_name,
       photo: employeeData.photo_url,
       
+      // Organizational info (prefilled)
       designation: employeeData.designation,
       department: employeeData.department_name,
       departmentId: employeeData.department_id,
       reportingManagerName: employeeData.reporting_manager_name,
       
+      // Contact info (prefilled)
       contact1: employeeData.contact1,
       contact2: employeeData.contact2,
       mailId1: employeeData.email1,
       mailId2: employeeData.email2,
       
-      sickLeavesAllocated: sickLeave.allocated || "",
-      sickLeavesConsumed: sickLeave.consumed || "",
-      sickLeavesRemaining: sickLeave.remaining || "",
-      
-      rhAllocated: rhLeave.allocated || "",
-      rhConsumed: rhLeave.consumed || "",
-      rhRemaining: rhLeave.remaining || "",
-      
-      plAllocated: plLeave.allocated || "",
-      plConsumed: plLeave.consumed || "",
-      plRemaining: plLeave.remaining || "",
-      
-      leaveApplyType: leaveApp.leave_type || "",
-      leaveFromDate: leaveApp.from_date || "",
-      leaveToDate: leaveApp.to_date || "",
-      reasonForLeave: leaveApp.reason || "",
-      leaveApprovalStatus: leaveApp.status || "Pending"
+      // Attendance specific info (editable by HR)
+      shiftTimings: "",
+      regularisationDays: ""
     };
     
     res.status(200).json({
@@ -201,265 +105,306 @@ exports.getLeaveById = async (req, res) => {
       data: responseData
     });
   } catch (error) {
-    console.error('Error fetching leave record:', error);
+    console.error('Error fetching attendance record:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching leave record',
+      message: 'Error fetching attendance record',
       error: error.message
     });
   }
 };
 
-// Get leave history by employee ID
-exports.getLeaveHistory = async (req, res) => {
+// Update attendance record
+exports.updateAttendance = async (req, res) => {
   try {
-    const leaves = await Leave.findAllByEmpId(req.params.id);
+    const attendance = await Attendance.update(req.params.id, req.body);
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: 'Attendance record not found'
+      });
+    }
     res.status(200).json({
       success: true,
-      data: leaves
+      message: 'Attendance record updated successfully',
+      data: attendance
     });
   } catch (error) {
-    console.error('Error fetching leave history:', error);
+    console.error('Error updating attendance record:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching leave history',
+      message: 'Error updating attendance record',
       error: error.message
     });
   }
 };
 
-// Get pending leave requests
-exports.getPendingLeaves = async (req, res) => {
+// Delete attendance record
+exports.deleteAttendance = async (req, res) => {
   try {
-    const leaves = await Leave.findPendingLeaves();
+    const attendance = await Attendance.delete(req.params.id);
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: 'Attendance record not found'
+      });
+    }
     res.status(200).json({
       success: true,
-      data: leaves
+      message: 'Attendance record deleted successfully',
+      data: attendance
     });
   } catch (error) {
-    console.error('Error fetching pending leaves:', error);
+    console.error('Error deleting attendance record:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching pending leaves',
+      message: 'Error deleting attendance record',
       error: error.message
     });
   }
 };
 
-// Get leave requests by status
-exports.getLeavesByStatus = async (req, res) => {
+// ==================== Attendance Records Controllers ====================
+
+// Create single attendance record
+exports.createAttendanceRecord = async (req, res) => {
   try {
-    const { status } = req.params;
-    const leaves = await Leave.findByStatus(status);
-    res.status(200).json({
+    const record = await Attendance.createAttendanceRecord(req.body);
+    res.status(201).json({
       success: true,
-      data: leaves
+      message: 'Attendance marked successfully',
+      data: record
     });
   } catch (error) {
-    console.error('Error fetching leaves by status:', error);
+    console.error('Error creating attendance record:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching leaves by status',
+      message: 'Error creating attendance record',
       error: error.message
     });
   }
 };
 
-// Get leave requests by date range
-exports.getLeavesByDateRange = async (req, res) => {
+// Create bulk attendance records
+exports.createBulkAttendanceRecords = async (req, res) => {
+  try {
+    const { records } = req.body;
+    
+    if (!records || !Array.isArray(records) || records.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Records array is required'
+      });
+    }
+
+    const results = await Attendance.createBulkAttendanceRecords(records);
+    res.status(201).json({
+      success: true,
+      message: `${results.length} attendance records saved successfully`,
+      data: results
+    });
+  } catch (error) {
+    console.error('Error creating bulk attendance records:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating bulk attendance records',
+      error: error.message
+    });
+  }
+};
+
+// Get attendance records by date range
+exports.getAttendanceRecords = async (req, res) => {
   try {
     const { id } = req.params;
-    const { fromDate, toDate } = req.query;
-    
-    if (!fromDate || !toDate) {
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
       return res.status(400).json({
         success: false,
-        message: 'fromDate and toDate are required'
+        message: 'startDate and endDate are required'
       });
     }
 
-    const leaves = await Leave.findByDateRange(id, fromDate, toDate);
+    const records = await Attendance.getAttendanceRecords(id, startDate, endDate);
     res.status(200).json({
       success: true,
-      data: leaves
+      data: records
     });
   } catch (error) {
-    console.error('Error fetching leaves by date range:', error);
+    console.error('Error fetching attendance records:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching leaves by date range',
+      message: 'Error fetching attendance records',
       error: error.message
     });
   }
 };
 
-// Update leave status (with email notification and AUTO ATTENDANCE MARKING)
-exports.updateLeaveStatus = async (req, res) => {
+// Get monthly attendance
+exports.getMonthlyAttendance = async (req, res) => {
   try {
-    const { leaveApprovalStatus } = req.body;
-    const leaveId = req.params.id;
-    
-    if (!leaveApprovalStatus || !['Pending', 'Approved', 'Rejected'].includes(leaveApprovalStatus)) {
+    const { id } = req.params;
+    const { year, month } = req.query;
+
+    if (!year || !month) {
       return res.status(400).json({
         success: false,
-        message: 'Valid leaveApprovalStatus is required (Pending, Approved, Rejected)'
+        message: 'year and month are required'
       });
     }
 
-    // Get leave details
-    const leaveQuery = `
-      SELECT la.*, ed.full_name, ed.email1
-      FROM leave_applications la
-      LEFT JOIN employee_details ed ON la.emp_id = ed.emp_id
-      WHERE la.id = $1
-    `;
+    const records = await Attendance.getMonthlyAttendance(id, parseInt(year), parseInt(month));
+    res.status(200).json({
+      success: true,
+      data: records
+    });
+  } catch (error) {
+    console.error('Error fetching monthly attendance:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching monthly attendance',
+      error: error.message
+    });
+  }
+};
+
+// Get attendance summary
+exports.getAttendanceSummary = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'startDate and endDate are required'
+      });
+    }
+
+    const summary = await Attendance.getAttendanceSummary(id, startDate, endDate);
+    res.status(200).json({
+      success: true,
+      data: summary
+    });
+  } catch (error) {
+    console.error('Error fetching attendance summary:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching attendance summary',
+      error: error.message
+    });
+  }
+};
+
+// Get department attendance summary
+exports.getDepartmentAttendanceSummary = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'startDate and endDate are required'
+      });
+    }
+
+    const summary = await Attendance.getDepartmentAttendanceSummary(startDate, endDate);
+    res.status(200).json({
+      success: true,
+      data: summary
+    });
+  } catch (error) {
+    console.error('Error fetching department attendance summary:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching department attendance summary',
+      error: error.message
+    });
+  }
+};
+
+// Get employees with low attendance
+exports.getLowAttendanceEmployees = async (req, res) => {
+  try {
+    const { startDate, endDate, threshold } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'startDate and endDate are required'
+      });
+    }
+
+    const thresholdValue = threshold ? parseFloat(threshold) : 75;
+    const employees = await Attendance.getLowAttendanceEmployees(thresholdValue, startDate, endDate);
     
-    const leaveResult = await pool.query(leaveQuery, [leaveId]);
-    if (leaveResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Leave record not found'
-      });
-    }
-
-    const leaveData = leaveResult.rows[0];
-
-    // Update status
-    const updatedLeave = await Leave.updateStatus(leaveId, leaveApprovalStatus);
-
-    // AUTO ATTENDANCE MARKING
-    if (leaveApprovalStatus === 'Approved') {
-      try {
-        await AttendanceService.markLeaveAsAbsent(leaveId);
-        console.log(`Attendance marked as leave for emp_id: ${leaveData.emp_id}`);
-      } catch (attendanceError) {
-        console.error('Error marking attendance:', attendanceError);
-        // Don't fail the leave approval if attendance marking fails
-      }
-    } else if (leaveApprovalStatus === 'Rejected') {
-      try {
-        await AttendanceService.revertLeaveToPresent(leaveId);
-        console.log(`Attendance reverted for emp_id: ${leaveData.emp_id}`);
-      } catch (attendanceError) {
-        console.error('Error reverting attendance:', attendanceError);
-      }
-    }
-
-    try {
-      // Send confirmation email to employee
-      await EmailService.sendLeaveApprovalConfirmation(
-        leaveData,
-        leaveData,
-        leaveApprovalStatus
-      );
-    } catch (emailError) {
-      console.error('Email sending failed:', emailError);
-    }
-
     res.status(200).json({
       success: true,
-      message: `Leave status updated to ${leaveApprovalStatus}`,
-      data: updatedLeave
+      message: `Employees with attendance below ${thresholdValue}%`,
+      data: employees
     });
   } catch (error) {
-    console.error('Error updating leave status:', error);
+    console.error('Error fetching low attendance employees:', error);
     res.status(500).json({
       success: false,
-      message: 'Error updating leave status',
+      message: 'Error fetching low attendance employees',
       error: error.message
     });
   }
 };
 
-// Update leave record
-exports.updateLeave = async (req, res) => {
+// Get daily attendance report
+exports.getDailyAttendanceReport = async (req, res) => {
   try {
-    const leaveId = req.params.id;
-    const leave = await Leave.update(leaveId, req.body);
-    if (!leave) {
-      return res.status(404).json({
+    const { date } = req.query;
+
+    if (!date) {
+      return res.status(400).json({
         success: false,
-        message: 'Leave record not found'
+        message: 'date is required (format: YYYY-MM-DD)'
       });
     }
+
+    const report = await Attendance.getDailyAttendanceReport(date);
     res.status(200).json({
       success: true,
-      message: 'Leave record updated successfully',
-      data: leave
+      data: report
     });
   } catch (error) {
-    console.error('Error updating leave record:', error);
+    console.error('Error fetching daily attendance report:', error);
     res.status(500).json({
       success: false,
-      message: 'Error updating leave record',
+      message: 'Error fetching daily attendance report',
       error: error.message
     });
   }
 };
 
-// Delete leave record
-exports.deleteLeave = async (req, res) => {
+// Mark today's attendance
+exports.markTodayAttendance = async (req, res) => {
   try {
-    const leaveId = req.params.id;
-    const leave = await Leave.delete(leaveId);
-    if (!leave) {
-      return res.status(404).json({
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status || !['present', 'absent', 'leave'].includes(status)) {
+      return res.status(400).json({
         success: false,
-        message: 'Leave record not found'
+        message: 'Valid status is required (present, absent, leave)'
       });
     }
-    res.status(200).json({
-      success: true,
-      message: 'Leave record deleted successfully',
-      data: leave
-    });
-  } catch (error) {
-    console.error('Error deleting leave record:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error deleting leave record',
-      error: error.message
-    });
-  }
-};
 
-// Get leave balance
-exports.getLeaveBalance = async (req, res) => {
-  try {
-    const balance = await Leave.getLeaveBalance(req.params.id);
-    if (!balance || balance.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Leave balance not found'
-      });
-    }
+    const record = await Attendance.markTodayAttendance(id, status);
     res.status(200).json({
       success: true,
-      data: balance
+      message: 'Today\'s attendance marked successfully',
+      data: record
     });
   } catch (error) {
-    console.error('Error fetching leave balance:', error);
+    console.error('Error marking today\'s attendance:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching leave balance',
-      error: error.message
-    });
-  }
-};
-
-// Get leave statistics
-exports.getLeaveStatistics = async (req, res) => {
-  try {
-    const stats = await Leave.getLeaveStatistics(req.params.id);
-    res.status(200).json({
-      success: true,
-      data: stats
-    });
-  } catch (error) {
-    console.error('Error fetching leave statistics:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching leave statistics',
+      message: 'Error marking today\'s attendance',
       error: error.message
     });
   }

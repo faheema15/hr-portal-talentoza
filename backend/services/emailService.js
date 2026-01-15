@@ -416,7 +416,7 @@ class EmailService {
               <p style="margin-top: 30px;">
                 <strong>Best Regards,</strong><br>
                 <strong>HR Department</strong><br>
-                Company Name
+                Talentoza
               </p>
               
               <div class="footer">

@@ -72,7 +72,7 @@ function ProjectDetail() {
   const fetchEmployees = useCallback(async () => {
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}0/api/projects/employees`, {
+      const response = await fetch(`${API_BASE_URL}/api/projects/employees`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       

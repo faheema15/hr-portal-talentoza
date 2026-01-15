@@ -662,7 +662,7 @@ function OfferLetter() {
                           📥 Download as PDF
                         </button>
                         
-                        {viewMode === 'draft' && (
+                        {(!viewMode || viewMode === 'draft') && (
                           <button 
                             className="btn btn-info text-white"
                             onClick={handleSendOfferLetter}
