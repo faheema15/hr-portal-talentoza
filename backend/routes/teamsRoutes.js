@@ -30,4 +30,10 @@ router.post('/:team_id/members', teamsController.addTeamMember);
 // Remove team member
 router.delete('/:team_id/members/:emp_id', teamsController.removeTeamMember);
 
+// Add project to team
+router.post('/:team_id/projects', teamsController.addProjectToTeam);
+
+// Remove project from team
+router.delete('/:team_id/projects/:project_id', teamsController.removeProjectFromTeam);
+
 module.exports = router;

@@ -132,18 +132,6 @@ const FileUpload = ({
           disabled={disabled || uploading}
           id={`file-${name}`}
         />
-        
-        {preview && !uploading && (
-          <button
-            type="button"
-            className="btn btn-outline-danger"
-            onClick={handleRemove}
-            disabled={disabled}
-            title="Remove file"
-          >
-            <i className="bi bi-trash"></i>
-          </button>
-        )}
       </div>
 
       {uploading && (

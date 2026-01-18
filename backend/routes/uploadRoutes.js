@@ -249,4 +249,93 @@ router.post('/employee-photo/:id', verifyToken,
     }
 });
 
+// Upload document for education/certification/research
+router.post('/document', verifyToken, documentUpload.single('file'), documentUploadToGCS, async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+
+    let fileUrl;
+    let filename;
+
+    if (isProduction) {
+      fileUrl = req.file.gcsUrl;
+      filename = req.file.gcsFilename;
+    } else {
+      fileUrl = `/uploads/documents/${req.file.filename}`;
+      filename = req.file.filename;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'File uploaded successfully',
+      data: {
+        file_url: fileUrl,
+        filename: filename,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      }
+    });
+
+  } catch (error) {
+    console.error('Error uploading document:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error uploading file',
+      error: error.message
+    });
+  }
+});
+
+// Delete document
+router.delete('/document/:filename', verifyToken, async (req, res) => {
+  try {
+    const filename = req.params.filename;
+
+    if (isProduction) {
+      const { Storage } = require('@google-cloud/storage');
+      const storage = new Storage({
+        projectId: process.env.GCS_PROJECT_ID,
+        keyFilename: process.env.GCS_KEY_FILE
+      });
+      const bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
+      
+      await bucket.file(filename).delete();
+      
+      res.status(200).json({
+        success: true,
+        message: 'File deleted successfully from GCS'
+      });
+    } else {
+      const filePath = path.join(__dirname, '../uploads/documents', filename);
+
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        res.status(200).json({
+          success: true,
+          message: 'File deleted successfully'
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: 'File not found'
+        });
+      }
+    }
+
+  } catch (error) {
+    console.error('Error deleting file:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting file',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

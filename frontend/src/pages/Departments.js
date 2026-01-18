@@ -1,4 +1,3 @@
-// frontend/src/pages/Departments.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCurrentUser } from "../utils/authUtils";
@@ -13,7 +12,11 @@ function Departments() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [showMembersModal, setShowMembersModal] = useState(false);
   const [editingDept, setEditingDept] = useState(null);
+  const [viewingDept, setViewingDept] = useState(null);
+  const [departmentMembers, setDepartmentMembers] = useState([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
   const [formData, setFormData] = useState({
     dept_name: "",
     head_id: ""
@@ -73,6 +76,32 @@ function Departments() {
     } catch (error) {
       console.error('Error fetching potential heads:', error);
     }
+  };
+
+  const fetchDepartmentMembers = async (deptId) => {
+    setLoadingMembers(true);
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/departments/${deptId}/members`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setDepartmentMembers(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching department members:', error);
+      setDepartmentMembers([]);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  const handleViewMembers = async (dept) => {
+    setViewingDept(dept);
+    setShowMembersModal(true);
+    await fetchDepartmentMembers(dept.dept_id);
   };
 
   const handleAddNew = () => {
@@ -239,6 +268,13 @@ function Departments() {
                           <td className="text-center">
                             <div className="btn-group btn-group-sm">
                               <button 
+                                className="btn btn-outline-info"
+                                onClick={() => handleViewMembers(dept)}
+                                title="View Members"
+                              >
+                                View
+                              </button>
+                              <button 
                                 className="btn btn-outline-primary"
                                 onClick={() => handleEdit(dept)}
                               >
@@ -272,7 +308,7 @@ function Departments() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Edit/Create Modal */}
       {showModal && (
         <>
           <div 
@@ -337,6 +373,77 @@ function Departments() {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* View Members Modal */}
+      {showMembersModal && viewingDept && (
+        <>
+          <div 
+            className="position-fixed top-0 start-0 w-100 h-100 bg-dark"
+            style={{ zIndex: 1040, opacity: 0.5 }}
+            onClick={() => setShowMembersModal(false)}
+          />
+          
+          <div 
+            className="position-fixed top-50 start-50 translate-middle"
+            style={{ zIndex: 1050, width: "90%", maxWidth: "700px", maxHeight: "80vh", overflow: "auto" }}
+          >
+            <div className="card border-0 shadow-lg">
+              <div className="card-body p-4">
+                <div className="d-flex justify-content-between align-items-start mb-4">
+                  <div>
+                    <h5 className="fw-bold mb-1">{viewingDept.dept_name}</h5>
+                    <p className="text-muted mb-0">
+                      Department Head: {viewingDept.head_name || 'Not Assigned'}
+                    </p>
+                  </div>
+                  <button 
+                    className="btn-close"
+                    onClick={() => setShowMembersModal(false)}
+                  />
+                </div>
+                
+                <h6 className="fw-semibold mb-3">Department Members</h6>
+                
+                {loadingMembers ? (
+                  <div className="text-center py-4">
+                    <div className="spinner-border text-primary spinner-border-sm" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
+                ) : departmentMembers.length > 0 ? (
+                  <div className="table-responsive">
+                    <table className="table table-sm table-hover">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Emp ID</th>
+                          <th>Name</th>
+                          <th>Designation</th>
+                          <th>Email</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {departmentMembers.map((member) => (
+                          <tr key={member.emp_id}>
+                            <td className="text-muted">{member.emp_id}</td>
+                            <td className="fw-semibold">{member.full_name}</td>
+                            <td>{member.designation || 'N/A'}</td>
+                            <td className="small">{member.email}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-muted">
+                    <p className="mb-0">No members in this department</p>
+                  </div>
+                )}
+                
               </div>
             </div>
           </div>

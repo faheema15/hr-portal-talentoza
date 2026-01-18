@@ -15,18 +15,26 @@ function Teams() {
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [showAddProjectModal, setShowAddProjectModal] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
   const [editingTeam, setEditingTeam] = useState(null);
   const [viewingTeam, setViewingTeam] = useState(null);
   const [formData, setFormData] = useState({
     team_name: "",
     team_head_id: "",
-    project_id: ""
   });
   const [memberFormData, setMemberFormData] = useState({
     emp_id: "",
     role_in_team: "",
     start_date: "",
     end_date: ""
+  });
+
+  const [projectFormData, setProjectFormData] = useState({
+    project_id: "",
+    start_date: "",
+    end_date: "",
+    role_in_project: ""
   });
 
   // Check access
@@ -118,14 +126,13 @@ function Teams() {
   };
 
   const handleEdit = (team) => {
-    setEditingTeam(team);
-    setFormData({
-      team_name: team.team_name,
-      team_head_id: team.team_head_id || "",
-      project_id: team.project_id || ""
-    });
-    setShowModal(true);
-  };
+  setEditingTeam(team);
+  setFormData({
+    team_name: team.team_name,
+    team_head_id: team.team_head_id || ""
+  });
+  setShowModal(true);
+};
 
   const handleDelete = async (team_id) => {
     if (!window.confirm('Are you sure you want to delete this team?')) return;
@@ -165,7 +172,6 @@ function Teams() {
         body: JSON.stringify({
           team_name: formData.team_name,
           team_head_id: formData.team_head_id || null,
-          project_id: formData.project_id || null
         })
       });
       
@@ -179,6 +185,73 @@ function Teams() {
       alert('Error saving team');
     }
   };
+
+  const handleAddProjectToTeam = async (e) => {
+  e.preventDefault();
+  
+  try {
+    const token = sessionStorage.getItem('token');
+    const response = await fetch(
+      `${API_BASE_URL}/api/teams/${viewingTeam.team_id}/projects`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          project_id: projectFormData.project_id,
+          start_date: projectFormData.start_date || null,
+          end_date: projectFormData.end_date || null,
+          role_in_project: projectFormData.role_in_project || null
+        })
+      }
+    );
+    
+    if (response.ok) {
+      alert('Project added to team successfully');
+      setShowAddProjectModal(false);
+      setProjectFormData({
+        project_id: "",
+        start_date: "",
+        end_date: "",
+        role_in_project: ""
+      });
+      handleView(viewingTeam.team_id);
+    } else {
+      alert('Error adding project');
+    }
+  } catch (error) {
+    console.error('Error adding project:', error);
+    alert('Error adding project');
+  }
+};
+
+const handleRemoveProjectFromTeam = async (project_id) => {
+  if (!window.confirm('Are you sure you want to remove this project from the team?')) return;
+  
+  try {
+    const token = sessionStorage.getItem('token');
+    const response = await fetch(
+      `${API_BASE_URL}/api/teams/${viewingTeam.team_id}/projects/${project_id}`,
+      {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      }
+    );
+    
+    if (response.ok) {
+      alert('Project removed from team successfully');
+      handleView(viewingTeam.team_id);
+    } else {
+      alert('Error removing project');
+    }
+  } catch (error) {
+    console.error('Error removing project:', error);
+    alert('Error removing project');
+  }
+};
+
 
   const handleAddMember = () => {
     setMemberFormData({
@@ -417,21 +490,6 @@ function Teams() {
                     </select>
                   </div>
                   
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">Project</label>
-                    <select 
-                      className="form-select"
-                      value={formData.project_id}
-                      onChange={(e) => setFormData({...formData, project_id: e.target.value})}
-                    >
-                      <option value="">Select Project</option>
-                      {projects.map(proj => (
-                        <option key={proj.project_id} value={proj.project_id}>
-                          {proj.project_name} ({proj.status})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
                   
                   <div className="d-flex gap-2">
                     <button 
@@ -521,62 +579,87 @@ function Teams() {
                   </div>
                 </div>
 
-                {/* Project Info */}
-                {viewingTeam.project_name && (
-                  <div className="mb-4 p-3 bg-light rounded">
-                    <h6 className="fw-bold mb-3 text-primary">
-                      <span className="badge bg-primary me-2">Project</span>
-                      {viewingTeam.project_name}
+                {/* Team Projects Section */}
+                <div className="mb-4">
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h6 className="fw-bold mb-0">
+                      📊 Assigned Projects ({viewingTeam.projects?.length || 0})
                     </h6>
-                    <div className="row">
-                      {viewingTeam.project_code && (
-                        <div className="col-md-4 mb-2">
-                          <small className="text-muted">Code:</small>
-                          <div className="fw-semibold">{viewingTeam.project_code}</div>
-                        </div>
-                      )}
-                      <div className="col-md-4 mb-2">
-                        <small className="text-muted">Status:</small>
-                        <div>
-                          <span className={`badge bg-${
-                            viewingTeam.project_status === 'Ongoing' ? 'success' :
-                            viewingTeam.project_status === 'Planned' ? 'info' :
-                            viewingTeam.project_status === 'Completed' ? 'secondary' : 'warning'
-                          }`}>
-                            {viewingTeam.project_status}
-                          </span>
-                        </div>
-                      </div>
-                      {viewingTeam.project_start_date && (
-                        <div className="col-md-4 mb-2">
-                          <small className="text-muted">Duration:</small>
-                          <div className="small">
-                            {new Date(viewingTeam.project_start_date).toLocaleDateString()} - 
-                            {viewingTeam.project_end_date ? new Date(viewingTeam.project_end_date).toLocaleDateString() : 'Ongoing'}
-                          </div>
-                        </div>
-                      )}
-                      {viewingTeam.client_name && (
-                        <div className="col-md-4 mb-2">
-                          <small className="text-muted">Client:</small>
-                          <div className="fw-semibold">{viewingTeam.client_name}</div>
-                        </div>
-                      )}
-                      {viewingTeam.technologies && (
-                        <div className="col-12 mb-2">
-                          <small className="text-muted">Technologies:</small>
-                          <div className="small">{viewingTeam.technologies}</div>
-                        </div>
-                      )}
-                      {viewingTeam.project_description && (
-                        <div className="col-12">
-                          <small className="text-muted">Description:</small>
-                          <div className="small">{viewingTeam.project_description}</div>
-                        </div>
-                      )}
-                    </div>
+                    {['HR', 'skip_level_manager'].includes(currentUser?.role) && (
+                      <button 
+                        className="btn btn-sm btn-primary"
+                        onClick={() => setShowAddProjectModal(true)}
+                      >
+                        + Add Project
+                      </button>
+                    )}
                   </div>
-                )}
+                  
+                  {viewingTeam.projects && viewingTeam.projects.length > 0 ? (
+                    <div className="table-responsive">
+                      <table className="table table-sm table-bordered">
+                        <thead className="table-light">
+                          <tr>
+                            <th>Project Name</th>
+                            <th>Code</th>
+                            <th>Status</th>
+                            <th>Client</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Role</th>
+                            {['HR', 'skip_level_manager'].includes(currentUser?.role) && (
+                              <th className="text-center">Action</th>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {viewingTeam.projects.map((project, idx) => (
+                            <tr key={idx}>
+                              <td className="fw-semibold">{project.project_name}</td>
+                              <td className="small">{project.project_code || 'N/A'}</td>
+                              <td>
+                                <span className={`badge bg-${
+                                  project.project_status === 'Ongoing' ? 'success' :
+                                  project.project_status === 'Planned' ? 'info' :
+                                  project.project_status === 'Completed' ? 'secondary' : 'warning'
+                                }`}>
+                                  {project.project_status}
+                                </span>
+                              </td>
+                              <td className="small">{project.client_name || 'N/A'}</td>
+                              <td className="small">
+                                {project.assignment_start_date 
+                                  ? new Date(project.assignment_start_date).toLocaleDateString() 
+                                  : 'N/A'}
+                              </td>
+                              <td className="small">
+                                {project.assignment_end_date 
+                                  ? new Date(project.assignment_end_date).toLocaleDateString() 
+                                  : 'Ongoing'}
+                              </td>
+                              <td className="small">{project.role_in_project || 'N/A'}</td>
+                              {['HR', 'skip_level_manager'].includes(currentUser?.role) && (
+                                <td className="text-center">
+                                  <button 
+                                    className="btn btn-sm btn-outline-danger"
+                                    onClick={() => handleRemoveProjectFromTeam(project.project_id)}
+                                    title="Remove Project"
+                                  >
+                                    Remove
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center text-muted py-4 border rounded bg-light">
+                      <p className="mb-0">No projects assigned yet</p>
+                    </div>
+                  )}
+                </div>
 
                 {/* Team Members */}
                 <div className="mb-3">
@@ -659,15 +742,6 @@ function Teams() {
                       <p className="mb-0">No team members added yet</p>
                     </div>
                   )}
-                </div>
-
-                <div className="d-flex justify-content-end mt-4">
-                  <button 
-                    className="btn btn-secondary"
-                    onClick={() => setShowViewModal(false)}
-                  >
-                    Close
-                  </button>
                 </div>
               </div>
             </div>
@@ -762,7 +836,108 @@ function Teams() {
           </div>
         </>
       )}
+
+    {/* Add Project Modal */}
+      {showAddProjectModal && (
+        <>
+          <div 
+            className="position-fixed top-0 start-0 w-100 h-100 bg-dark"
+            style={{ zIndex: 1060, opacity: 0.5 }}
+            onClick={() => setShowAddProjectModal(false)}
+          />
+          
+          <div 
+            className="position-fixed top-50 start-50 translate-middle"
+            style={{ zIndex: 1070, width: "90%", maxWidth: "500px" }}
+          >
+            <div className="card border-0 shadow-lg">
+              <div className="card-body p-4">
+                <h5 className="fw-bold mb-4">Assign Project to Team</h5>
+                
+                <form onSubmit={handleAddProjectToTeam}>
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Project *</label>
+                    <select 
+                      className="form-select"
+                      value={projectFormData.project_id}
+                      onChange={(e) => setProjectFormData({
+                        ...projectFormData, 
+                        project_id: e.target.value
+                      })}
+                      required
+                    >
+                      <option value="">Select Project</option>
+                      {projects.map(proj => (
+                        <option key={proj.project_id} value={proj.project_id}>
+                          {proj.project_name} ({proj.status})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Role in Project</label>
+                    <input 
+                      type="text" 
+                      className="form-control"
+                      placeholder="e.g., Development Team, Support Team"
+                      value={projectFormData.role_in_project}
+                      onChange={(e) => setProjectFormData({
+                        ...projectFormData, 
+                        role_in_project: e.target.value
+                      })}
+                    />
+                  </div>
+                  
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Assignment Start Date</label>
+                    <input 
+                      type="date" 
+                      className="form-control"
+                      value={projectFormData.start_date}
+                      onChange={(e) => setProjectFormData({
+                        ...projectFormData, 
+                        start_date: e.target.value
+                      })}
+                    />
+                  </div>
+                  
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Assignment End Date (Optional)</label>
+                    <input 
+                      type="date" 
+                      className="form-control"
+                      value={projectFormData.end_date}
+                      onChange={(e) => setProjectFormData({
+                        ...projectFormData, 
+                        end_date: e.target.value
+                      })}
+                    />
+                  </div>
+                  
+                  <div className="d-flex gap-2">
+                    <button 
+                      type="button" 
+                      className="btn btn-secondary flex-fill"
+                      onClick={() => setShowAddProjectModal(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="submit" 
+                      className="btn btn-primary flex-fill"
+                    >
+                      Add Project to Team
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </>
+      )}  
     </div>
+    
   );
 }
 

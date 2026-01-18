@@ -1,5 +1,5 @@
 //backend/controllers/teamsController.js
-const teamsModel = require('../models/Teams');
+const teamsModel = require('../models/teams');
 
 const teamsController = {
   // Get all teams
@@ -250,6 +250,71 @@ const teamsController = {
       res.status(500).json({
         success: false,
         message: 'Error removing team member',
+        error: error.message
+      });
+    }
+  },
+
+  // Add project to team
+  addProjectToTeam: async (req, res) => {
+    try {
+      const { team_id } = req.params;
+      const { project_id, start_date, end_date, role_in_project } = req.body;
+
+      if (!project_id) {
+        return res.status(400).json({
+          success: false,
+          message: 'Project ID is required'
+        });
+      }
+
+      const project = await teamsModel.addProjectToTeam({
+        team_id,
+        project_id,
+        start_date,
+        end_date,
+        role_in_project
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Project added to team successfully',
+        data: project
+      });
+    } catch (error) {
+      console.error('Error adding project to team:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error adding project to team',
+        error: error.message
+      });
+    }
+  },
+
+  // Remove project from team
+  removeProjectFromTeam: async (req, res) => {
+    try {
+      const { team_id, project_id } = req.params;
+
+      const removedProject = await teamsModel.removeProjectFromTeam(team_id, project_id);
+
+      if (!removedProject) {
+        return res.status(404).json({
+          success: false,
+          message: 'Project assignment not found'
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Project removed from team successfully',
+        data: removedProject
+      });
+    } catch (error) {
+      console.error('Error removing project from team:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error removing project from team',
         error: error.message
       });
     }

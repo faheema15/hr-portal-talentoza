@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getCurrentUser } from "../utils/authUtils";
-import FileUpload from "../components/FileUpload"; // Import the reusable component
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
@@ -146,6 +145,14 @@ function JoiningDetails() {
     fetchData();
   }, [id, currentUser?.emp_id]);
 
+  const handleViewDocument = (url) => {
+    if (url) {
+      // Handle both relative and absolute URLs
+      const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}/${url.startsWith('/') ? url.substring(1) : url}`;
+      window.open(fullUrl, '_blank');
+    }
+  };
+  
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -155,11 +162,6 @@ function JoiningDetails() {
     setPreviousEmployments(prev =>
       prev.map(emp => emp.id === id ? { ...emp, [field]: value } : emp)
     );
-  };
-
-  // NEW: Handle file upload callback
-  const handleFileUpload = (employmentId, field, url) => {
-    handleEmploymentChange(employmentId, field, url);
   };
 
   const addEmployment = () => {
@@ -533,47 +535,175 @@ function JoiningDetails() {
                             />
                           </div>
                           
-                          {/* FILE UPLOAD COMPONENTS */}
+                          {/* FILE UPLOAD - OFFER LETTER */}
                           <div className="col-md-4">
-                            <FileUpload
-                              label="Offer Letter"
-                              name={`offerLetter_${employment.id}`}
-                              value={employment.offerLetter}
-                              onChange={(url) => handleFileUpload(employment.id, 'offerLetter', url)}
+                            <label className="form-label">Offer Letter</label>
+                            <input 
+                              type="file"
+                              className="form-control"
                               accept=".pdf,.doc,.docx"
-                              uploadEndpoint="/api/upload/document"
-                              maxSize={5}
+                              onChange={async (e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                  // Validate file size
+                                  if (file.size > 5 * 1024 * 1024) {
+                                    alert('File size must be less than 5MB');
+                                    return;
+                                  }
+                                  
+                                  try {
+                                    const formData = new FormData();
+                                    formData.append('file', file);
+                                    formData.append('fieldName', 'offer_letter');
+
+                                    const token = sessionStorage.getItem('token');
+                                    const response = await fetch(`${API_BASE_URL}/api/upload/document`, {
+                                      method: 'POST',
+                                      headers: {
+                                        'Authorization': `Bearer ${token}`
+                                      },
+                                      body: formData
+                                    });
+
+                                    if (response.ok) {
+                                      const result = await response.json();
+                                      handleEmploymentChange(employment.id, 'offerLetter', result.data.file_url);
+                                    } else {
+                                      const errorData = await response.json();
+                                      alert(`Error uploading file: ${errorData.message}`);
+                                    }
+                                  } catch (error) {
+                                    console.error('Error uploading file:', error);
+                                    alert('Error uploading file. Please try again.');
+                                  }
+                                }
+                              }}
                               disabled={!isHR}
-                              helpText="Upload PDF or DOC (Max 5MB)"
                             />
+                            <small className="text-muted">Upload PDF or DOC (Max 5MB)</small>
+                            {employment.offerLetter && (
+                              <button 
+                                type="button"
+                                className="btn btn-sm btn-outline-primary mt-2"
+                                onClick={() => handleViewDocument(employment.offerLetter)}
+                              >
+                                <i className="bi bi-eye me-1"></i> View Offer Letter
+                              </button>
+                            )}
                           </div>
                           
+                          {/* FILE UPLOAD - RELIEVING LETTER */}
                           <div className="col-md-4">
-                            <FileUpload
-                              label="Relieving Letter"
-                              name={`releavingLetter_${employment.id}`}
-                              value={employment.releavingLetter}
-                              onChange={(url) => handleFileUpload(employment.id, 'releavingLetter', url)}
+                            <label className="form-label">Relieving Letter</label>
+                            <input 
+                              type="file"
+                              className="form-control"
                               accept=".pdf,.doc,.docx"
-                              uploadEndpoint="/api/upload/document"
-                              maxSize={5}
+                              onChange={async (e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                  // Validate file size
+                                  if (file.size > 5 * 1024 * 1024) {
+                                    alert('File size must be less than 5MB');
+                                    return;
+                                  }
+                                  
+                                  try {
+                                    const formData = new FormData();
+                                    formData.append('file', file);
+                                    formData.append('fieldName', 'relieving_letter');
+
+                                    const token = sessionStorage.getItem('token');
+                                    const response = await fetch(`${API_BASE_URL}/api/upload/document`, {
+                                      method: 'POST',
+                                      headers: {
+                                        'Authorization': `Bearer ${token}`
+                                      },
+                                      body: formData
+                                    });
+
+                                    if (response.ok) {
+                                      const result = await response.json();
+                                      handleEmploymentChange(employment.id, 'releavingLetter', result.data.file_url);
+                                    } else {
+                                      const errorData = await response.json();
+                                      alert(`Error uploading file: ${errorData.message}`);
+                                    }
+                                  } catch (error) {
+                                    console.error('Error uploading file:', error);
+                                    alert('Error uploading file. Please try again.');
+                                  }
+                                }
+                              }}
                               disabled={!isHR}
-                              helpText="Upload PDF or DOC (Max 5MB)"
                             />
+                            <small className="text-muted">Upload PDF or DOC (Max 5MB)</small>
+                            {employment.releavingLetter && (
+                              <button 
+                                type="button"
+                                className="btn btn-sm btn-outline-primary mt-2"
+                                onClick={() => handleViewDocument(employment.releavingLetter)}
+                              >
+                                <i className="bi bi-eye me-1"></i> View Relieving Letter
+                              </button>
+                            )}
                           </div>
                           
+                          {/* FILE UPLOAD - PAY SLIPS */}
                           <div className="col-md-4">
-                            <FileUpload
-                              label="Last 3 Months Pay Slips"
-                              name={`paySlips_${employment.id}`}
-                              value={employment.paySlips}
-                              onChange={(url) => handleFileUpload(employment.id, 'paySlips', url)}
+                            <label className="form-label">Last 3 Months Pay Slips</label>
+                            <input 
+                              type="file"
+                              className="form-control"
                               accept=".pdf,.doc,.docx"
-                              uploadEndpoint="/api/upload/document"
-                              maxSize={10}
+                              onChange={async (e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                  // Validate file size
+                                  if (file.size > 10 * 1024 * 1024) {
+                                    alert('File size must be less than 10MB');
+                                    return;
+                                  }
+                                  
+                                  try {
+                                    const formData = new FormData();
+                                    formData.append('file', file);
+                                    formData.append('fieldName', 'pay_slips');
+
+                                    const token = sessionStorage.getItem('token');
+                                    const response = await fetch(`${API_BASE_URL}/api/upload/document`, {
+                                      method: 'POST',
+                                      headers: {
+                                        'Authorization': `Bearer ${token}`
+                                      },
+                                      body: formData
+                                    });
+
+                                    if (response.ok) {
+                                      const result = await response.json();
+                                      handleEmploymentChange(employment.id, 'paySlips', result.data.file_url);
+                                    } else {
+                                      const errorData = await response.json();
+                                      alert(`Error uploading file: ${errorData.message}`);
+                                    }
+                                  } catch (error) {
+                                    console.error('Error uploading file:', error);
+                                    alert('Error uploading file. Please try again.');
+                                  }
+                                }
+                              }}
                               disabled={!isHR}
-                              helpText="Upload combined PDF (Max 10MB)"
                             />
+                            <small className="text-muted">Upload combined PDF (Max 10MB)</small>
+                            {employment.paySlips && (
+                              <button 
+                                type="button"
+                                className="btn btn-sm btn-outline-primary mt-2"
+                                onClick={() => handleViewDocument(employment.paySlips)}
+                              >
+                                <i className="bi bi-eye me-1"></i> View Pay Slips
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>

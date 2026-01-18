@@ -92,6 +92,8 @@ CREATE TABLE employee_details (
     health_condition TEXT,
     pandemic_diseases TEXT,
     photo_url VARCHAR(500),
+    aadhar_document_url VARCHAR(500),
+    pan_document_url VARCHAR(500),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -115,9 +117,20 @@ CREATE TABLE teams (
     team_id SERIAL PRIMARY KEY,
     team_name VARCHAR(255) NOT NULL,
     team_head_id INTEGER REFERENCES employee_details(emp_id) ON DELETE SET NULL,
-    project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE team_projects (
+    id SERIAL PRIMARY KEY,
+    team_id INTEGER NOT NULL REFERENCES teams(team_id) ON DELETE CASCADE,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    start_date DATE,
+    end_date DATE,
+    role_in_project VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(team_id, project_id)  -- Prevent duplicate assignments
 );
 
 -- 7. Team Members Table
@@ -211,7 +224,7 @@ CREATE TABLE previous_employment (
     designation VARCHAR(255),
     offer_letter_url VARCHAR(500),
     relieving_letter_url VARCHAR(500),
-    payslip_urls TEXT[],
+    payslip_urls TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -226,6 +239,7 @@ CREATE TABLE bank_details (
     ifsc_code VARCHAR(20),
     pan_card VARCHAR(500),
     cancelled_cheque_url VARCHAR(500),
+    bank_passbook_url VARCHAR(500), 
     start_date DATE,
     end_date DATE,
     is_primary BOOLEAN DEFAULT false,
@@ -409,6 +423,8 @@ CREATE INDEX idx_team_members_team_id ON team_members(team_id);
 CREATE INDEX idx_team_members_emp_id ON team_members(emp_id);
 CREATE INDEX idx_offer_letters_email ON offer_letters(email);
 CREATE INDEX idx_offer_letters_status ON offer_letters(status);
+CREATE INDEX idx_team_projects_team_id ON team_projects(team_id);
+CREATE INDEX idx_team_projects_project_id ON team_projects(project_id);
 
 
 -- ======================================================
@@ -451,6 +467,7 @@ CREATE TRIGGER update_dependent_details_updated_at BEFORE UPDATE ON dependent_de
 CREATE TRIGGER update_claim_history_updated_at BEFORE UPDATE ON claim_history FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_pending_signups_updated_at BEFORE UPDATE ON pending_signups FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_offer_letters_updated_at BEFORE UPDATE ON offer_letters FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_team_projects_updated_at BEFORE UPDATE ON team_projects FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ======================================================
 -- DEFAULT ADMIN USER

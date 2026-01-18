@@ -348,24 +348,20 @@ function ProjectDetail() {
             )}
 
             <div className="row">
-              <div className="col-md-6 mb-3">
+              <div className="col-md-4 mb-3">
                 <label className="text-muted small mb-1">Project Head</label>
                 <p className="fw-semibold mb-0">{project.project_head_name || 'Not Assigned'}</p>
               </div>
               
-              {project.client_name && (
-                <div className="col-md-6 mb-3">
-                  <label className="text-muted small mb-1">Client Name</label>
-                  <p className="fw-semibold mb-0">{project.client_name}</p>
-                </div>
-              )}
+              <div className="col-md-4 mb-3">
+                <label className="text-muted small mb-1">Client Name</label>
+                <p className="fw-semibold mb-0">{project.client_name || '-'}</p>
+              </div>
               
-              {project.client_contact && (
-                <div className="col-md-6 mb-3">
-                  <label className="text-muted small mb-1">Client Contact</label>
-                  <p className="fw-semibold mb-0">{project.client_contact}</p>
-                </div>
-              )}
+              <div className="col-md-4 mb-3">
+                <label className="text-muted small mb-1">Client Contact</label>
+                <p className="fw-semibold mb-0">{project.client_contact || '-'}</p>
+              </div>
               
               <div className="col-md-3 mb-3">
                 <label className="text-muted small mb-1">Start Date</label>
@@ -377,33 +373,25 @@ function ProjectDetail() {
                 <p className="fw-semibold mb-0">{formatDate(project.end_date)}</p>
               </div>
               
-              {project.budget && (
-                <div className="col-md-3 mb-3">
-                  <label className="text-muted small mb-1">Budget</label>
-                  <p className="fw-semibold mb-0">{formatCurrency(project.budget)}</p>
-                </div>
-              )}
+              <div className="col-md-3 mb-3">
+                <label className="text-muted small mb-1">Budget</label>
+                <p className="fw-semibold mb-0">{formatCurrency(project.budget)}</p>
+              </div>
               
-              {project.actual_cost && (
-                <div className="col-md-3 mb-3">
-                  <label className="text-muted small mb-1">Actual Cost</label>
-                  <p className="fw-semibold mb-0">{formatCurrency(project.actual_cost)}</p>
-                </div>
-              )}
+              <div className="col-md-3 mb-3">
+                <label className="text-muted small mb-1">Actual Cost</label>
+                <p className="fw-semibold mb-0">{formatCurrency(project.actual_cost)}</p>
+              </div>
               
-              {project.technologies && (
-                <div className="col-md-12 mb-3">
-                  <label className="text-muted small mb-1">Technologies</label>
-                  <p className="mb-0">{project.technologies}</p>
-                </div>
-              )}
+              <div className="col-md-12 mb-3">
+                <label className="text-muted small mb-1">Technologies</label>
+                <p className="mb-0">{project.technologies || '-'}</p>
+              </div>
               
-              {project.remarks && (
-                <div className="col-md-12 mb-3">
-                  <label className="text-muted small mb-1">Remarks</label>
-                  <p className="mb-0">{project.remarks}</p>
-                </div>
-              )}
+              <div className="col-md-12 mb-3">
+                <label className="text-muted small mb-1">Remarks</label>
+                <p className="mb-0">{project.remarks || '-'}</p>
+              </div>
             </div>
           </div>
         </div>

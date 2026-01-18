@@ -96,7 +96,10 @@ exports.getBankDetailsById = async (req, res) => {
         bank_name,
         branch_address,
         account_number,
-        ifsc_code
+        ifsc_code,
+        pan_card,
+        cancelled_cheque_url,
+        bank_passbook_url
       FROM bank_details
       WHERE emp_id = $1
       AND (end_date IS NULL OR end_date > CURRENT_DATE)
@@ -138,7 +141,12 @@ exports.getBankDetailsById = async (req, res) => {
       bankName: bankData.bank_name || "",
       branchAddress: bankData.branch_address || "",
       bankAccountNumber: bankData.account_number || "",
-      ifscCode: bankData.ifsc_code || ""
+      ifscCode: bankData.ifsc_code || "",
+      
+      // Bank documents
+      panCard: bankData.pan_card || "",
+      cancelledCheque: bankData.cancelled_cheque_url || "",
+      bankPassbook: bankData.bank_passbook_url || ""
     };
     
     res.status(200).json({

@@ -29,7 +29,10 @@ function BankDetails() {
     bankName: "",
     branchAddress: "",
     bankAccountNumber: "",
-    ifscCode: ""
+    ifscCode: "",
+    panCard: "",           // ADD THIS
+    cancelledCheque: "",   // ADD THIS
+    bankPassbook: ""       // ADD THIS
   });
 
   const [originalData, setOriginalData] = useState(formData);

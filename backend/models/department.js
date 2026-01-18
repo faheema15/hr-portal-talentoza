@@ -116,6 +116,29 @@ const Department = {
     } catch (error) {
       throw error;
     }
+  },
+
+  getDepartmentMembers: async (id) => {
+    try {
+      const query = `
+        SELECT 
+          ed.emp_id,
+          ed.full_name,
+          ed.designation,
+          u.email,
+          u.role,
+          ed.contact1
+        FROM employee_details ed
+        INNER JOIN users u ON ed.user_id = u.id
+        WHERE ed.department_id = $1
+        AND u.is_active = true
+        ORDER BY ed.full_name ASC
+      `;
+      const result = await db.query(query, [id]);
+      return result.rows;
+    } catch (error) {
+      throw error;
+    }
   }
 };
 

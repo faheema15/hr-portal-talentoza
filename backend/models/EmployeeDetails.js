@@ -186,80 +186,85 @@ class EmployeeDetails {
   }
 
   // Update employee
-  static async update(emp_id, data) {
-    // Helper function to convert empty strings to null for date fields
-    const sanitizeDate = (value) => {
-      if (value === '' || value === undefined) return null;
-      return value;
-    };
+  // Update employee
+static async update(emp_id, data) {
+  // Helper function to convert empty strings to null for date fields
+  const sanitizeDate = (value) => {
+    if (value === '' || value === undefined) return null;
+    return value;
+  };
 
-    const query = `
-      UPDATE employee_details SET
-        user_id = COALESCE($1, user_id),
-        designation = COALESCE($2, designation),
-        department_id = COALESCE($3, department_id),
-        reporting_manager_id = COALESCE($4, reporting_manager_id),
-        dob = COALESCE($5, dob),
-        aadhar_no = COALESCE($6, aadhar_no),
-        pan_no = COALESCE($7, pan_no),
-        passport_no = COALESCE($8, passport_no),
-        contact1 = COALESCE($9, contact1),
-        contact2 = COALESCE($10, contact2),
-        email1 = COALESCE($11, email1),
-        email2 = COALESCE($12, email2),
-        father_name = COALESCE($13, father_name),
-        mother_name = COALESCE($14, mother_name),
-        present_address = COALESCE($15, present_address),
-        permanent_address = COALESCE($16, permanent_address),
-        marital_status = COALESCE($17, marital_status),
-        spouse_name = COALESCE($18, spouse_name),
-        emergency_contact_name = COALESCE($19, emergency_contact_name),
-        emergency_relation = COALESCE($20, emergency_relation),
-        emergency_contact_number = COALESCE($21, emergency_contact_number),
-        ready_for_relocation = COALESCE($22, ready_for_relocation),
-        criminal_cases = COALESCE($23, criminal_cases),
-        addictions = COALESCE($24, addictions),
-        health_condition = COALESCE($25, health_condition),
-        pandemic_diseases = COALESCE($26, pandemic_diseases),
-        photo_url = COALESCE($27, photo_url)
-      WHERE emp_id = $28
-      RETURNING *
-    `;
-    
-    const values = [
-      data.user_id || null,
-      data.designation || null,
-      data.department_id || null,
-      data.reporting_manager_id || null,
-      sanitizeDate(data.dob),
-      data.aadhar_no || null,
-      data.pan_no || null,
-      data.passport_no || null,
-      data.contact1 || null,
-      data.contact2 || null,
-      data.email1 || null,
-      data.email2 || null,
-      data.father_name || null,
-      data.mother_name || null,
-      data.present_address || null,
-      data.permanent_address || null,
-      data.marital_status || null,
-      data.spouse_name || null,
-      data.emergency_contact_name || null,
-      data.emergency_relation || null,
-      data.emergency_contact_number || null,
-      data.ready_for_relocation !== undefined ? data.ready_for_relocation : null,
-      data.criminal_cases !== undefined ? data.criminal_cases : null,
-      data.addictions || null,
-      data.health_condition || null,
-      data.pandemic_diseases || null,
-      data.photo_url || null,
-      emp_id
-    ];
+  const query = `
+    UPDATE employee_details SET
+      user_id = COALESCE($1, user_id),
+      designation = COALESCE($2, designation),
+      department_id = COALESCE($3, department_id),
+      reporting_manager_id = COALESCE($4, reporting_manager_id),
+      dob = COALESCE($5, dob),
+      aadhar_no = COALESCE($6, aadhar_no),
+      pan_no = COALESCE($7, pan_no),
+      passport_no = COALESCE($8, passport_no),
+      contact1 = COALESCE($9, contact1),
+      contact2 = COALESCE($10, contact2),
+      email1 = COALESCE($11, email1),
+      email2 = COALESCE($12, email2),
+      father_name = COALESCE($13, father_name),
+      mother_name = COALESCE($14, mother_name),
+      present_address = COALESCE($15, present_address),
+      permanent_address = COALESCE($16, permanent_address),
+      marital_status = COALESCE($17, marital_status),
+      spouse_name = COALESCE($18, spouse_name),
+      emergency_contact_name = COALESCE($19, emergency_contact_name),
+      emergency_relation = COALESCE($20, emergency_relation),
+      emergency_contact_number = COALESCE($21, emergency_contact_number),
+      ready_for_relocation = COALESCE($22, ready_for_relocation),
+      criminal_cases = COALESCE($23, criminal_cases),
+      addictions = COALESCE($24, addictions),
+      health_condition = COALESCE($25, health_condition),
+      pandemic_diseases = COALESCE($26, pandemic_diseases),
+      photo_url = COALESCE($27, photo_url),
+      aadhar_document_url = COALESCE($28, aadhar_document_url),
+      pan_document_url = COALESCE($29, pan_document_url)
+    WHERE emp_id = $30
+    RETURNING *
+  `;
+  
+  const values = [
+    data.user_id || null,
+    data.designation || null,
+    data.department_id || null,
+    data.reporting_manager_id || null,
+    sanitizeDate(data.dob),
+    data.aadhar_no || null,
+    data.pan_no || null,
+    data.passport_no || null,
+    data.contact1 || null,
+    data.contact2 || null,
+    data.email1 || null,
+    data.email2 || null,
+    data.father_name || null,
+    data.mother_name || null,
+    data.present_address || null,
+    data.permanent_address || null,
+    data.marital_status || null,
+    data.spouse_name || null,
+    data.emergency_contact_name || null,
+    data.emergency_relation || null,
+    data.emergency_contact_number || null,
+    data.ready_for_relocation !== undefined ? data.ready_for_relocation : null,
+    data.criminal_cases !== undefined ? data.criminal_cases : null,
+    data.addictions || null,
+    data.health_condition || null,
+    data.pandemic_diseases || null,
+    data.photo_url || null,
+    data.aadhar_document_url || null,  // ← ADD THIS (parameter $28)
+    data.pan_document_url || null,     // ← ADD THIS (parameter $29)
+    emp_id                              // ← This is parameter $30
+  ];
 
-    const result = await pool.query(query, values);
-    return result.rows[0];
-  }
+  const result = await pool.query(query, values);
+  return result.rows[0];
+}
 
   // Delete employee (cascades to related records)
   static async delete(emp_id) {

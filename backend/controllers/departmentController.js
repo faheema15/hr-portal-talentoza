@@ -186,7 +186,28 @@ const departmentController = {
         error: error.message
       });
     }
+  },
+  
+  getDepartmentMembers: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const members = await Department.getDepartmentMembers(id);
+      
+      res.status(200).json({
+        success: true,
+        data: members,
+        message: 'Department members retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Error fetching department members:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching department members',
+        error: error.message
+      });
+    }
   }
 };
+
 
 module.exports = departmentController;

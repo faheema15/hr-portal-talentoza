@@ -674,58 +674,6 @@ function Salary() {
                 </div>
               </div>
 
-              {/* Payment Details */}
-              <div className="row g-3 mb-4">
-                <div className="col-12 mt-4">
-                  <h5 className="fw-bold text-primary mb-3">Payment Information</h5>
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold">Salary Month</label>
-                  <input 
-                    type="month" 
-                    className="form-control"
-                    name="salaryMonth"
-                    value={formData.salaryMonth}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold">Payment Date</label>
-                  <input 
-                    type="date" 
-                    className="form-control"
-                    name="paymentDate"
-                    value={formData.paymentDate}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold">Payment Mode</label>
-                  <select 
-                    className="form-select"
-                    name="paymentMode"
-                    value={formData.paymentMode}
-                    onChange={handleChange}
-                  >
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="Cash">Cash</option>
-                    <option value="Cheque">Cheque</option>
-                    <option value="UPI">UPI</option>
-                  </select>
-                </div>
-                <div className="col-12">
-                  <label className="form-label fw-semibold">Remarks</label>
-                  <textarea 
-                    className="form-control"
-                    name="remarks"
-                    value={formData.remarks}
-                    onChange={handleChange}
-                    rows="3"
-                    placeholder="Any additional notes or remarks"
-                  />
-                </div>
-              </div>
-
               {/* Action Buttons */}
               <div className="row mt-5">
                 <div className="col-12">

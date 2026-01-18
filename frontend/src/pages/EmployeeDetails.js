@@ -40,7 +40,9 @@ function EmployeeDetails() {
     criminal_cases: false,
     addictions: "",
     health_condition: "",
-    pandemic_diseases: ""
+    pandemic_diseases: "",
+    aadhar_document_url: null,
+    pan_document_url: null,
   });
 
   // Education, Certification, Research Papers state
@@ -49,6 +51,8 @@ function EmployeeDetails() {
   const [researchPapers, setResearchPapers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [managers, setManagers] = useState([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({});
 
    // Form visibility states
   const [showEducationForm, setShowEducationForm] = useState(false);
@@ -152,7 +156,9 @@ function EmployeeDetails() {
       criminal_cases: data.criminal_cases || false,
       addictions: data.addictions || "",
       health_condition: data.health_condition || "",
-      pandemic_diseases: data.pandemic_diseases || ""
+      pandemic_diseases: data.pandemic_diseases || "",
+      aadhar_document_url: data.aadhar_document_url || null,
+      pan_document_url: data.pan_document_url || null,
     };
 
     setFormData(employeeData);
@@ -205,6 +211,71 @@ function EmployeeDetails() {
       }
     } catch (err) {
       console.error("Error fetching education:", err);
+    }
+  };
+
+  // Generic file upload handler
+  const handleFileUpload = async (file, fieldType) => {
+    if (!file) return null;
+
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please upload a valid file (PDF, JPG, PNG, DOC, DOCX)');
+      return null;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB');
+      return null;
+    }
+
+    try {
+      setUploadingFile(true);
+      setUploadProgress(prev => ({ ...prev, [fieldType]: 0 }));
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('fieldName', fieldType);
+
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/upload/document`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setUploadProgress(prev => ({ ...prev, [fieldType]: 100 }));
+        setTimeout(() => {
+          setUploadProgress(prev => {
+            const newProgress = { ...prev };
+            delete newProgress[fieldType];
+            return newProgress;
+          });
+        }, 1000);
+        return result.data.file_url;
+      } else {
+        const errorData = await response.json();
+        alert(`Error uploading file: ${errorData.message}`);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Error uploading file. Please try again.');
+      return null;
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const handleViewDocument = (url) => {
+    if (url) {
+      // Handle both relative and absolute URLs
+      const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}/${url.startsWith('/') ? url.substring(1) : url}`;
+      window.open(fullUrl, '_blank');
     }
   };
 
@@ -1415,6 +1486,81 @@ const handlePhotoUpdate = async (photoUrl) => {
                     </div>
                   </div>
 
+                  {/* ID CARDS UPLOAD SECTION */}
+                  <div className="row g-3 mb-5">
+                    <div className="col-12">
+                      <h5 className="fw-bold text-primary mb-4">Identity Documents</h5>
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Aadhar Card</label>
+                      <input 
+                        type="file"
+                        className="form-control"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const url = await handleFileUpload(file, 'aadhar');
+                            if (url) {
+                              setFormData(prev => ({ ...prev, aadhar_document_url: url }));
+                              handlePhotoUpdate({ aadhar_document_url: url });
+                            }
+                          }
+                        }}
+                        disabled={uploadingFile}
+                      />
+                      {uploadProgress['aadhar'] !== undefined && (
+                        <div className="progress mt-2" style={{height: '5px'}}>
+                          <div className="progress-bar" style={{width: `${uploadProgress['aadhar']}%`}}></div>
+                        </div>
+                      )}
+                      {formData.aadhar_document_url && (
+                        <button 
+                          type="button"
+                          className="btn btn-sm btn-outline-primary mt-2"
+                          onClick={() => handleViewDocument(formData.aadhar_document_url)}
+                        >
+                          <i className="bi bi-eye me-1"></i> View Aadhar
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">PAN Card</label>
+                      <input 
+                        type="file"
+                        className="form-control"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const url = await handleFileUpload(file, 'pan');
+                            if (url) {
+                              setFormData(prev => ({ ...prev, pan_document_url: url }));
+                              handlePhotoUpdate({ pan_document_url: url });
+                            }
+                          }
+                        }}
+                        disabled={uploadingFile}
+                      />
+                      {uploadProgress['pan'] !== undefined && (
+                        <div className="progress mt-2" style={{height: '5px'}}>
+                          <div className="progress-bar" style={{width: `${uploadProgress['pan']}%`}}></div>
+                        </div>
+                      )}
+                      {formData.pan_document_url && (
+                        <button 
+                          type="button"
+                          className="btn btn-sm btn-outline-primary mt-2"
+                          onClick={() => handleViewDocument(formData.pan_document_url)}
+                        >
+                          <i className="bi bi-eye me-1"></i> View PAN Card
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   {/* EDUCATION SECTION */}
                   <div className="row mb-5">
                     <div className="col-12">
@@ -1441,10 +1587,16 @@ const handlePhotoUpdate = async (photoUrl) => {
                                   <td>{edu.year_of_passing}</td>
                                   <td>{edu.cgpa}</td>
                                   <td>
-                                    {edu.document_url && (
-                                      <a href={edu.document_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-primary">
-                                        View
-                                      </a>
+                                    {edu.document_url ? (
+                                      <button 
+                                        type="button"
+                                        className="btn btn-sm btn-outline-primary"
+                                        onClick={() => handleViewDocument(edu.document_url)}
+                                      >
+                                        <i className="bi bi-eye me-1"></i> View
+                                      </button>
+                                    ) : (
+                                      <span className="text-muted">No document</span>
                                     )}
                                   </td>
                                 </tr>
@@ -1526,14 +1678,36 @@ const handlePhotoUpdate = async (photoUrl) => {
                                   />
                                 </div>
                                 <div className="col-md-4">
-                                  <label className="form-label fw-semibold">Document URL</label>
+                                  <label className="form-label fw-semibold">Upload Document</label>
                                   <input 
-                                    type="url"
+                                    type="file"
                                     className="form-control"
-                                    value={newEducation.document_url}
-                                    onChange={(e) => setNewEducation({...newEducation, document_url: e.target.value})}
-                                    placeholder="https://..."
+                                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                    onChange={async (e) => {
+                                      const file = e.target.files[0];
+                                      if (file) {
+                                        const url = await handleFileUpload(file, 'education');
+                                        if (url) {
+                                          setNewEducation({...newEducation, document_url: url});
+                                        }
+                                      }
+                                    }}
+                                    disabled={uploadingFile}
                                   />
+                                  {uploadProgress['education'] !== undefined && (
+                                    <div className="progress mt-2" style={{height: '5px'}}>
+                                      <div className="progress-bar" style={{width: `${uploadProgress['education']}%`}}></div>
+                                    </div>
+                                  )}
+                                  {newEducation.document_url && (
+                                    <button 
+                                      type="button"
+                                      className="btn btn-sm btn-outline-primary mt-2"
+                                      onClick={() => handleViewDocument(newEducation.document_url)}
+                                    >
+                                      <i className="bi bi-eye me-1"></i> View Uploaded Document
+                                    </button>
+                                  )}
                                 </div>
                                 <div className="col-12 text-end">
                                   <button 
@@ -1546,6 +1720,7 @@ const handlePhotoUpdate = async (photoUrl) => {
                                   <button 
                                     type="submit" 
                                     className="btn btn-primary"
+                                    disabled={uploadingFile}
                                   >
                                     Save Education
                                   </button>
@@ -1592,10 +1767,16 @@ const handlePhotoUpdate = async (photoUrl) => {
                                     )}
                                   </td>
                                   <td>
-                                    {cert.certificate && (
-                                      <a href={cert.certificate} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-primary">
-                                        View
-                                      </a>
+                                    {cert.certificate ? (
+                                      <button 
+                                        type="button"
+                                        className="btn btn-sm btn-outline-primary"
+                                        onClick={() => handleViewDocument(cert.certificate)}
+                                      >
+                                        <i className="bi bi-eye me-1"></i> View
+                                      </button>
+                                    ) : (
+                                      <span className="text-muted">No certificate</span>
                                     )}
                                   </td>
                                   <td>
@@ -1695,15 +1876,37 @@ const handlePhotoUpdate = async (photoUrl) => {
                                     />
                                   </div>
                                 )}
-                                <div className="col-12">
-                                  <label className="form-label fw-semibold">Certificate URL</label>
+                               <div className="col-12">
+                                  <label className="form-label fw-semibold">Upload Certificate</label>
                                   <input 
-                                    type="url"
+                                    type="file"
                                     className="form-control"
-                                    value={newCertification.certificate}
-                                    onChange={(e) => setNewCertification({...newCertification, certificate: e.target.value})}
-                                    placeholder="https://..."
+                                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                    onChange={async (e) => {
+                                      const file = e.target.files[0];
+                                      if (file) {
+                                        const url = await handleFileUpload(file, 'certificate');
+                                        if (url) {
+                                          setNewCertification({...newCertification, certificate: url});
+                                        }
+                                      }
+                                    }}
+                                    disabled={uploadingFile}
                                   />
+                                  {uploadProgress['certificate'] !== undefined && (
+                                    <div className="progress mt-2" style={{height: '5px'}}>
+                                      <div className="progress-bar" style={{width: `${uploadProgress['certificate']}%`}}></div>
+                                    </div>
+                                  )}
+                                  {newCertification.certificate && (
+                                    <button 
+                                      type="button"
+                                      className="btn btn-sm btn-outline-primary mt-2"
+                                      onClick={() => handleViewDocument(newCertification.certificate)}
+                                    >
+                                      <i className="bi bi-eye me-1"></i> View Uploaded Certificate
+                                    </button>
+                                  )}
                                 </div>
                                 <div className="col-12 text-end">
                                   <button 
@@ -1716,6 +1919,7 @@ const handlePhotoUpdate = async (photoUrl) => {
                                   <button 
                                     type="submit" 
                                     className="btn btn-primary"
+                                    disabled={uploadingFile}
                                   >
                                     Save Certification
                                   </button>

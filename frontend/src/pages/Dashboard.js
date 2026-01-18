@@ -8,24 +8,19 @@ function Dashboard() {
   const currentUser = getCurrentUser();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  console.log('=== DEBUG INFO ===');
-  console.log('Current User:', currentUser);
-  console.log('User Role:', currentUser?.role);
-  console.log('Raw sessionStorage user:', sessionStorage.getItem('user'));
-
   const allMenuItems = [ 
     { id: 1, title: "Employee Details", icon: "🧑‍💼", path: "/employee-details", color: "#4F46E5", useEmployeeList: true }, 
     { id: 2, title: "Joining Details", icon: "📝", path: "/joining-details", color: "#7C3AED", useEmployeeList: true }, 
     { id: 3, title: "Bank Details", icon: "🏦", path: "/bank-details", color: "#2563EB", useEmployeeList: true }, 
-    { id: 4, title: "BGV", icon: "✓", path: "/bgv", color: "#0891B2", allowedRoles: ['HR', 'manager', 'skip_level_manager'], useEmployeeList: true },
+    { id: 4, title: "BGV", icon: "✓", path: "/bgv", color: "#0891B2", allowedRoles: ['HR', 'skip_level_manager'], useEmployeeList: true },
     { id: 5, title: "Projects", icon: "🔧", path: "/projects", color: "#059669", useEmployeeList: false }, 
     { id: 6, title: "Leave", icon: "🌴", path: "/leave", color: "#DC2626", useEmployeeList: true }, 
     { id: 7, title: "Attendance", icon: "📅", path: "/attendance", color: "#EA580C", useEmployeeList: true }, 
     { id: 8, title: "Salary", icon: "💰", path: "/salary", color: "#CA8A04", useEmployeeList: true }, 
     { id: 9, title: "Insurance", icon: "🛡️", path: "/insurance", color: "#DB2777", useEmployeeList: true }, 
     { id: 10, title: "Departments", icon: "🏢", path: "/departments", color: "#16A34A", allowedRoles: ['HR', 'skip_level_manager'], useEmployeeList: false }, 
-    { id: 11, title: "Teams", icon: "👥", path: "/teams", color: "#0D9488", allowedRoles: ['HR', 'manager', 'skip_level_manager'], useEmployeeList: false },
-    { id: 12, title: "Offer Letter", icon: "📄", path: "/offer-letter", color: "#8B5CF6", allowedRoles: ['HR'], useEmployeeList: false }
+    { id: 11, title: "Teams", icon: "👥", path: "/teams", color: "#0D9488", allowedRoles: ['HR', 'skip_level_manager'], useEmployeeList: false },
+    { id: 12, title: "Offer Letter", icon: "📄", path: "/offer-letter", color: "#8B5CF6", allowedRoles: ['HR', 'skip_level_manager'], useEmployeeList: false }
   ];
 
   // Filter menu items based on user role

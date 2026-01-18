@@ -9,6 +9,8 @@ router.get('/', departmentController.getAllDepartments);
 // GET potential department heads
 router.get('/potential-heads', departmentController.getPotentialHeads);
 
+router.get('/:id/members', departmentController.getDepartmentMembers);
+
 // GET single department by ID
 router.get('/:id', departmentController.getDepartmentById);
 
