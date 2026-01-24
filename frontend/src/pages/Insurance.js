@@ -8,7 +8,7 @@ function Insurance() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isNewEntry = id === "new";
-  const INITIAL_PHOTO = "https://via.placeholder.com/150/cccccc/666666?text=Upload+Photo";
+  const INITIAL_PHOTO = "/default_profile.jpg";
 
   const [formData, setFormData] = useState({
     photo: INITIAL_PHOTO,
@@ -99,7 +99,7 @@ function Insurance() {
         const transformedData = {
           photo: insuranceInfo.photo 
           ? (insuranceInfo.photo.startsWith('http') ? insuranceInfo.photo : `${API_BASE_URL}${insuranceInfo.photo}`)
-          : INITIAL_PHOTO,
+          : "/default_profile.jpg",
           empId: insuranceInfo.empId || "",
           empName: insuranceInfo.empName || "",
           designation: insuranceInfo.designation || "",

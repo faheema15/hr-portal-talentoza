@@ -8,7 +8,7 @@ function Attendance() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isNewEntry = id === "new";
-  const INITIAL_PHOTO = "https://via.placeholder.com/150/cccccc/666666?text=Upload+Photo";
+  const INITIAL_PHOTO = "/default_profile.jpg";
 
   const [formData, setFormData] = useState({
     photo: INITIAL_PHOTO,
@@ -35,112 +35,139 @@ function Attendance() {
   const [photoPreview, setPhotoPreview] = useState(INITIAL_PHOTO);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [governmentHolidays, setGovernmentHolidays] = useState([]);
+
 
   const currentUser = getCurrentUser();
   const isHR = currentUser?.role === 'HR';
 
-  // Government holidays (can be customized)
-  const getGovernmentHolidays = (year) => {
-    return [
-      `${year}-01-26`, // Republic Day
-      `${year}-08-15`, // Independence Day
-      `${year}-10-02`, // Gandhi Jayanti
-      `${year}-12-25`  // Christmas
-    ];
-  };
-
-  const fetchAttendanceForMonth = useCallback((month, year) => {
-    const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${lastDay}`;
-
-    const token = sessionStorage.getItem('token');
-    
-    fetch(`${API_BASE_URL}/api/attendance/${id}/records?startDate=${startDate}&endDate=${endDate}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          const attendanceMap = {};
-          data.data.forEach(record => {
-            attendanceMap[record.attendance_date] = record.status;
-          });
-          setAttendanceData(attendanceMap);
-        }
-      })
-      .catch(err => console.error("Error fetching attendance records:", err));
-  }, [id]); 
-
   useEffect(() => {
-    setHasChanges(JSON.stringify(formData) !== JSON.stringify(originalData));
-  }, [formData, originalData]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const empIdToFetch = id !== "new" ? id : currentUser?.emp_id;
+  const fetchHolidays = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/attendance/holidays?year=${currentYear}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       
-      if (!empIdToFetch || empIdToFetch === "new") {
+      if (response.ok) {
+        const data = await response.json();
+        setGovernmentHolidays(data.holidays || []);
+      }
+    } catch (error) {
+      console.error('Error fetching holidays:', error);
+      // Fallback to hardcoded if Google Calendar fails
+      setGovernmentHolidays([
+        `${currentYear}-01-26`,
+        `${currentYear}-08-15`,
+        `${currentYear}-10-02`,
+        `${currentYear}-12-25`
+      ]);
+    }
+  };
+  
+  fetchHolidays();
+}, [currentYear]);
+
+// REPLACE THIS ENTIRE useEffect SECTION in your Attendance component
+// This is the section that handles data fetching
+
+// Fetch attendance data for a specific month (WITHOUT dependency on currentMonth/Year)
+const fetchAttendanceForMonth = useCallback((month, year) => {
+  const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${lastDay}`;
+
+  const token = sessionStorage.getItem('token');
+  
+  fetch(`${API_BASE_URL}/api/attendance/${id}/records?startDate=${startDate}&endDate=${endDate}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        const attendanceMap = {};
+        data.data.forEach(record => {
+          attendanceMap[record.attendance_date] = record.status;
+        });
+        setAttendanceData(attendanceMap);
+      }
+    })
+    .catch(err => console.error("Error fetching attendance records:", err));
+}, [id]); 
+
+// ONLY fetch employee data on initial load (ONCE)
+useEffect(() => {
+  const fetchData = async () => {
+    const empIdToFetch = id !== "new" ? id : currentUser?.emp_id;
+    
+    if (!empIdToFetch || empIdToFetch === "new") {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = sessionStorage.getItem('token');
+      
+      if (!token) {
+        setError('Session expired. Please login again.');
         setLoading(false);
         return;
       }
 
-      try {
-        setLoading(true);
-        const token = sessionStorage.getItem('token');
-        
-        if (!token) {
-          setError('Session expired. Please login again.');
-          setLoading(false);
-          return;
-        }
+      const response = await fetch(`${API_BASE_URL}/api/attendance/${empIdToFetch}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
 
-        const response = await fetch(`${API_BASE_URL}/api/attendance/${empIdToFetch}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch attendance details');
-        }
-
-        const data = await response.json();
-        const attendanceInfo = data.data;
-        
-        const transformedData = {
-          photo: attendanceInfo.photo 
-          ? (attendanceInfo.photo.startsWith('http') ? attendanceInfo.photo : `${API_BASE_URL}${attendanceInfo.photo}`)
-          : INITIAL_PHOTO,
-          empId: attendanceInfo.empId || "",
-          empName: attendanceInfo.empName || "",
-          designation: attendanceInfo.designation || "",
-          department: attendanceInfo.department || "",
-          departmentId: attendanceInfo.departmentId || "",
-          reportingManagerName: attendanceInfo.reportingManagerName || "Not Assigned",
-          contact1: attendanceInfo.contact1 || "",
-          contact2: attendanceInfo.contact2 || "",
-          mailId1: attendanceInfo.mailId1 || "",
-          mailId2: attendanceInfo.mailId2 || "",
-          shiftTimings: attendanceInfo.shiftTimings || "",
-          regularisationDays: attendanceInfo.regularisationDays || ""
-        };
-        
-        setFormData(transformedData);
-        setOriginalData(transformedData);
-        setPhotoPreview(transformedData.photo);
-        setError(null);
-        
-        // Fetch attendance records for current month
-        fetchAttendanceForMonth(currentMonth, currentYear);
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setError(err.message || "Failed to load data");
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error('Failed to fetch attendance details');
       }
-    };
 
-    fetchData();
-  }, [id, currentUser?.emp_id, currentMonth, currentYear, fetchAttendanceForMonth]);
+      const data = await response.json();
+      const attendanceInfo = data.data;
+      
+      const transformedData = {
+        photo: attendanceInfo.photo 
+        ? (attendanceInfo.photo.startsWith('http') ? attendanceInfo.photo : `${API_BASE_URL}${attendanceInfo.photo}`)
+        : "/default_profile.jpg",
+        empId: attendanceInfo.empId || "",
+        empName: attendanceInfo.empName || "",
+        designation: attendanceInfo.designation || "",
+        department: attendanceInfo.department || "",
+        departmentId: attendanceInfo.departmentId || "",
+        reportingManagerName: attendanceInfo.reportingManagerName || "Not Assigned",
+        contact1: attendanceInfo.contact1 || "",
+        contact2: attendanceInfo.contact2 || "",
+        mailId1: attendanceInfo.mailId1 || "",
+        mailId2: attendanceInfo.mailId2 || "",
+        shiftTimings: attendanceInfo.shiftTimings || "",
+        regularisationDays: attendanceInfo.regularisationDays || ""
+      };
+      
+      setFormData(transformedData);
+      setOriginalData(transformedData);
+      setPhotoPreview(transformedData.photo);
+      setError(null);
+      
+      // Fetch attendance records for CURRENT month (only once on load)
+      fetchAttendanceForMonth(currentMonth, currentYear);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError(err.message || "Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, [id, currentUser?.emp_id]); // Only depend on id and currentUser, NOT currentMonth/Year
+
+// SEPARATE useEffect to fetch attendance when month/year changes
+useEffect(() => {
+  if (formData.empId) {
+    fetchAttendanceForMonth(currentMonth, currentYear);
+  }
+}, [currentMonth, currentYear, formData.empId, fetchAttendanceForMonth]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -241,176 +268,192 @@ function Attendance() {
     }
   };
 
-  // Calendar functions
-  const getDaysInMonth = (month, year) => {
-    return new Date(year, month + 1, 0).getDate();
-  };
+  // Replace this entire section in your Attendance component
+// Starting from "const getDaysInMonth" to "const renderCalendar = () => {"
 
-  const getFirstDayOfMonth = (month, year) => {
-    return new Date(year, month, 1).getDay();
-  };
+const getDaysInMonth = (month, year) => {
+  return new Date(year, month + 1, 0).getDate();
+};
 
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
+const getFirstDayOfMonth = (month, year) => {
+  return new Date(year, month, 1).getDay();
+};
 
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const monthNames = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
 
-  const handlePrevMonth = () => {
-    if (currentMonth === 0) {
-      setCurrentMonth(11);
-      setCurrentYear(currentYear - 1);
-    } else {
-      setCurrentMonth(currentMonth - 1);
-    }
-  };
+const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  const handleNextMonth = () => {
-    if (currentMonth === 11) {
-      setCurrentMonth(0);
-      setCurrentYear(currentYear + 1);
-    } else {
-      setCurrentMonth(currentMonth + 1);
-    }
-  };
+// Replace ONLY the month navigation functions - keep everything else the same
 
-  const handleDateClick = (day) => {
-    if (!isHR) return;
-    
+const handlePrevMonth = () => {
+  if (currentMonth === 0) {
+    setCurrentMonth(11);
+    setCurrentYear(currentYear - 1);
+  } else {
+    setCurrentMonth(currentMonth - 1);
+  }
+};
+
+const handleNextMonth = () => {
+  if (currentMonth === 11) {
+    setCurrentMonth(0);
+    setCurrentYear(currentYear + 1);
+  } else {
+    setCurrentMonth(currentMonth + 1);
+  }
+};
+
+const handleDateClick = (day) => {
+  if (!isHR) return;
+  
+  const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const currentStatus = attendanceData[dateKey];
+  // CHANGE THIS LINE:
+  // const holidays = getGovernmentHolidays(currentYear);
+  // TO THIS:
+  const holidays = governmentHolidays;
+  
+  const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
+  const isSunday = dayOfWeek === 0;
+  const isHoliday = holidays.includes(dateKey);
+
+  // Can't change Sundays or holidays
+  if (isSunday || isHoliday) {
+    alert("Cannot change attendance for Sundays and Government Holidays");
+    return;
+  }
+
+  // Cycle through: present -> absent -> present
+  let newStatus;
+  if (currentStatus === "present") {
+    newStatus = "absent";
+  } else {
+    newStatus = "present";
+  }
+
+  setAttendanceData(prev => ({
+    ...prev,
+    [dateKey]: newStatus
+  }));
+  setHasChanges(true);
+};
+
+const getDateStatus = (day) => {
+  const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  return attendanceData[dateKey];
+};
+
+const getDateColor = (day, status) => {
+  const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
+
+  if (dayOfWeek === 0) return "#eab308"; // Sunday
+  if (governmentHolidays.includes(dateKey)) return "#eab308"; // Holiday
+  if (status === "present") return "#22c55e"; // Green
+  if (status === "absent") return "#ef4444"; // Red
+  if (status === "half_day") return "#f97316"; // Orange
+  return "transparent";
+};
+
+const renderCalendar = () => {
+  const daysInMonth = getDaysInMonth(currentMonth, currentYear);
+  const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
+  const days = [];
+
+  for (let i = 0; i < firstDay; i++) {
+    days.push(<div key={`empty-${i}`} className="p-2"></div>);
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const status = getDateStatus(day);
     const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const currentStatus = attendanceData[dateKey];
-    const holidays = getGovernmentHolidays(currentYear);
+    // CHANGE THIS LINE:
+    // const holidays = getGovernmentHolidays(currentYear);
+    // TO THIS:
+    const holidays = governmentHolidays;
+    
     const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
     const isSunday = dayOfWeek === 0;
     const isHoliday = holidays.includes(dateKey);
+    const bgColor = getDateColor(day, status);
+    const isToday = day === new Date().getDate() && 
+                    currentMonth === new Date().getMonth() && 
+                    currentYear === new Date().getFullYear();
+    const isClickable = isHR && !isSunday && !isHoliday;
 
-    // Can't change Sundays or holidays
-    if (isSunday || isHoliday) {
-      alert("Cannot change attendance for Sundays and Government Holidays");
-      return;
-    }
+    days.push(
+      <div
+        key={day}
+        className="p-2 text-center position-relative"
+        style={{
+          cursor: isClickable ? "pointer" : "default",
+          backgroundColor: bgColor,
+          border: isToday ? "2px solid #3b82f6" : "1px solid #e5e7eb",
+          fontWeight: status || isSunday || isHoliday ? "600" : "normal",
+          color: (status || isSunday || isHoliday) ? "#fff" : "#000",
+          minHeight: "50px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: "4px",
+          transition: "all 0.2s"
+        }}
+        onClick={() => handleDateClick(day)}
+        title={isSunday ? "Sunday" : isHoliday ? "Government Holiday" : ""}
+        onMouseEnter={(e) => {
+          if (isClickable && status !== "absent") {
+            e.currentTarget.style.opacity = "0.8";
+          }
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.opacity = "1";
+        }}
+      >
+        {day}
+      </div>
+    );
+  }
 
-    // Cycle through: present -> absent -> present
-    let newStatus;
-    if (currentStatus === "present") {
-      newStatus = "absent";
-    } else {
-      newStatus = "present";
-    }
-
-    setAttendanceData(prev => ({
-      ...prev,
-      [dateKey]: newStatus
-    }));
-    setHasChanges(true);
-  };
-
-  const getDateStatus = (day) => {
-    const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return attendanceData[dateKey];
-  };
-
-  const getDateColor = (day, status) => {
-    const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const holidays = getGovernmentHolidays(currentYear);
-    const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
-
-    if (dayOfWeek === 0) return "#eab308"; // Sunday = yellow
-    if (holidays.includes(dateKey)) return "#eab308"; // Holiday = yellow
-    if (status === "present") return "#22c55e"; // Green
-    if (status === "absent") return "#ef4444"; // Red
-    return "transparent";
-  };
-
-  const renderCalendar = () => {
-    const daysInMonth = getDaysInMonth(currentMonth, currentYear);
-    const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
-    const days = [];
-
-    for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`empty-${i}`} className="p-2"></div>);
-    }
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const status = getDateStatus(day);
-      const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const holidays = getGovernmentHolidays(currentYear);
-      const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
-      const isSunday = dayOfWeek === 0;
-      const isHoliday = holidays.includes(dateKey);
-      const bgColor = getDateColor(day, status);
-      const isToday = day === new Date().getDate() && 
-                      currentMonth === new Date().getMonth() && 
-                      currentYear === new Date().getFullYear();
-      const isClickable = isHR && !isSunday && !isHoliday;
-
-      days.push(
-        <div
-          key={day}
-          className="p-2 text-center position-relative"
-          style={{
-            cursor: isClickable ? "pointer" : "default",
-            backgroundColor: bgColor,
-            border: isToday ? "2px solid #3b82f6" : "1px solid #e5e7eb",
-            fontWeight: status || isSunday || isHoliday ? "600" : "normal",
-            color: (status || isSunday || isHoliday) ? "#fff" : "#000",
-            minHeight: "50px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: "4px",
-            transition: "all 0.2s"
-          }}
-          onClick={() => handleDateClick(day)}
-          title={isSunday ? "Sunday" : isHoliday ? "Government Holiday" : ""}
-          onMouseEnter={(e) => {
-            if (isClickable && status !== "absent") {
-              e.currentTarget.style.opacity = "0.8";
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = "1";
-          }}
-        >
-          {day}
-        </div>
-      );
-    }
-
-    return days;
-  };
+  return days;
+};
 
   // Calculate attendance statistics (UPDATED)
-  const calculateStats = () => {
-    const daysInMonth = getDaysInMonth(currentMonth, currentYear);
-    const holidays = getGovernmentHolidays(currentYear);
-    let daysPresent = 0, daysLeave = 0, totalWorkingDays = 0;
+const calculateStats = () => {
+  const daysInMonth = getDaysInMonth(currentMonth, currentYear);
+  // CHANGE THIS LINE:
+  // const holidays = getGovernmentHolidays(currentYear);
+  // TO THIS:
+  const holidays = governmentHolidays;
+  
+  let daysPresent = 0, daysLeave = 0, totalWorkingDays = 0;
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
-      const status = getDateStatus(day);
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
+    const status = getDateStatus(day);
 
-      // Count working days (Mon-Sat, excluding holidays)
-      if (dayOfWeek !== 0 && !holidays.includes(dateKey)) {
-        totalWorkingDays++;
-        if (status === "present") {
-          daysPresent++;
-        } else if (status === "absent") {
-          daysLeave++;
-        }
+    // Count working days (Mon-Sat, excluding holidays)
+    if (dayOfWeek !== 0 && !holidays.includes(dateKey)) {
+      totalWorkingDays++;
+      if (status === "present") {
+        daysPresent++;
+      } else if (status === "absent") {
+        daysLeave++;
       }
     }
+  }
 
-    return { 
-      daysPresent, 
-      daysLeave, 
-      totalWorkingDays, 
-      totalDays: daysInMonth,
-      attendancePercentage: totalWorkingDays > 0 ? ((daysPresent / totalWorkingDays) * 100).toFixed(2) : 0
-    };
+  return { 
+    daysPresent, 
+    daysLeave, 
+    totalWorkingDays, 
+    totalDays: daysInMonth,
+    attendancePercentage: totalWorkingDays > 0 ? ((daysPresent / totalWorkingDays) * 100).toFixed(2) : 0
   };
+};
 
   const stats = calculateStats();
 
@@ -582,7 +625,11 @@ function Attendance() {
                       </div>
                       <div className="d-flex align-items-center gap-2">
                         <div style={{ width: "20px", height: "20px", backgroundColor: "#ef4444", borderRadius: "4px" }}></div>
-                        <small>Absent</small>
+                        <small>Absent/Leave</small>
+                      </div>
+                      <div className="d-flex align-items-center gap-2">
+                        <div style={{ width: "20px", height: "20px", backgroundColor: "#f97316", borderRadius: "4px" }}></div>
+                        <small>Half Day</small>
                       </div>
                       <div className="d-flex align-items-center gap-2">
                         <div style={{ width: "20px", height: "20px", backgroundColor: "#eab308", borderRadius: "4px" }}></div>

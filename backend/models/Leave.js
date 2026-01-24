@@ -2,28 +2,30 @@ const pool = require('../config/database');
 
 class Leave {
   // Create leave record
-  static async create(data) {
-    const query = `
-      INSERT INTO leave_applications (
-        emp_id, leave_type, from_date, to_date, reason, status
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6
-      )
-      RETURNING *
-    `;
-    
-    const values = [
-      data.empId,
-      data.leaveApplyType,
-      data.leaveFromDate,
-      data.leaveToDate,
-      data.reasonForLeave || null,
-      data.leaveApprovalStatus || 'Pending'
-    ];
+ static async create(data) {
+  const query = `
+    INSERT INTO leave_applications (
+      emp_id, leave_type, from_date, to_date, reason, status, total_days, day_wise_details
+    ) VALUES (
+      $1, $2, $3, $4, $5, $6, $7, $8
+    )
+    RETURNING *
+  `;
+  
+  const values = [
+    data.empId,
+    data.leaveApplyType,
+    data.leaveFromDate,
+    data.leaveToDate,
+    data.reasonForLeave || null,
+    data.leaveApprovalStatus || 'Pending',
+    data.totalDays || 1,
+    data.dayWiseDetails ? JSON.stringify(data.dayWiseDetails) : null
+  ];
 
-    const result = await pool.query(query, values);
-    return result.rows[0];
-  }
+  const result = await pool.query(query, values);
+  return result.rows[0];
+}
 
   // Get all leave records
   static async findAll() {
@@ -61,22 +63,36 @@ class Leave {
   }
 
   // Get all leave records by emp_id (for history)
-  static async findAllByEmpId(empId) {
-    const query = `
-      SELECT 
-        la.*,
-        ed.full_name,
-        ed.designation,
-        d.name as department
-      FROM leave_applications la
-      LEFT JOIN employee_details ed ON la.emp_id = ed.emp_id
-      LEFT JOIN departments d ON ed.department_id = d.id
-      WHERE la.emp_id = $1
-      ORDER BY la.created_at DESC
-    `;
-    const result = await pool.query(query, [empId]);
-    return result.rows;
-  }
+static async findAllByEmpId(empId) {
+  const query = `
+    SELECT 
+      la.id,
+      la.id as _id,
+      la.emp_id,
+      la.leave_type as "leaveApplyType",
+      la.from_date as "leaveFromDate",
+      la.to_date as "leaveToDate",
+      la.reason as "reasonForLeave",
+      la.status as "leaveApprovalStatus",
+      la.total_days,
+      la.duration,
+      la.from_date_duration,
+      la.to_date_duration,
+      la.day_wise_details,
+      la.created_at as "createdAt",
+      la.updated_at as "updatedAt",
+      ed.full_name,
+      ed.designation,
+      d.name as department
+    FROM leave_applications la
+    LEFT JOIN employee_details ed ON la.emp_id = ed.emp_id
+    LEFT JOIN departments d ON ed.department_id = d.id
+    WHERE la.emp_id = $1
+    ORDER BY la.created_at DESC
+  `;
+  const result = await pool.query(query, [empId]);
+  return result.rows;
+}
 
   // Get pending leave requests
   static async findPendingLeaves() {
@@ -161,18 +177,19 @@ class Leave {
     return result.rows[0];
   }
 
-  // Update leave status only
-  static async updateStatus(leaveId, status) {
-    const query = `
-      UPDATE leave_applications SET
-        status = $1,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2
-      RETURNING *
-    `;
-    const result = await pool.query(query, [status, leaveId]);
-    return result.rows[0];
-  }
+
+// Update leave status only (used for approve/reject)
+static async updateStatus(leaveId, status) {
+  const query = `
+    UPDATE leave_applications SET
+      status = $1,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $2
+    RETURNING *
+  `;
+  const result = await pool.query(query, [status, leaveId]);
+  return result.rows[0];
+}
 
   // Delete leave record
   static async delete(leaveId) {

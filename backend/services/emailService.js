@@ -15,7 +15,8 @@ class EmailService {
   // Send leave approval email to HR and Manager
   static async sendLeaveApprovalEmail(leaveData, empData) {
     try {
-      const leaveDays = this.calculateLeaveDays(
+      // Calculate leave days - handle if totalDays is already provided
+      const leaveDays = leaveData.totalDays || this.calculateLeaveDays(
         leaveData.leaveFromDate,
         leaveData.leaveToDate
       );
@@ -522,6 +523,213 @@ class EmailService {
     `;
   }
 
+  static async sendForgotPasswordEmail(email, fullName, tempPassword, empId) {
+  try {
+    const emailContent = this.generateForgotPasswordEmailContent(
+      fullName,
+      tempPassword,
+      empId
+    );
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Password Reset - HR Portal',
+      html: emailContent
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log('✅ Forgot password email sent to:', email);
+    return { success: true, recipient: email };
+  } catch (error) {
+    console.error('❌ Error sending forgot password email:', error);
+    throw error;
+  }
+  }
+
+  static generateForgotPasswordEmailContent(fullName, tempPassword, empId) {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #2c3e50; color: white; padding: 20px; border-radius: 5px 5px 0 0; text-align: center; }
+            .content { background-color: #ecf0f1; padding: 20px; border-radius: 0 0 5px 5px; }
+            .info-section { margin: 15px 0; }
+            .temp-password-box { 
+              background-color: #fff3cd; 
+              padding: 20px; 
+              border: 2px solid #ffc107; 
+              border-radius: 5px; 
+              margin: 20px 0;
+              text-align: center;
+            }
+            .temp-password-box strong { 
+              font-size: 18px; 
+              color: #333;
+              display: block;
+              margin-top: 10px;
+              font-family: monospace;
+              letter-spacing: 2px;
+            }
+            .warning { 
+              background-color: #f8d7da; 
+              padding: 15px; 
+              border-left: 4px solid #dc3545; 
+              margin: 15px 0; 
+              border-radius: 3px;
+            }
+            .footer { font-size: 12px; color: #7f8c8d; margin-top: 20px; text-align: center; }
+            .steps { background-color: #d1ecf1; padding: 15px; border-left: 4px solid #17a2b8; margin: 15px 0; border-radius: 3px; }
+            .steps ol { margin: 10px 0; padding-left: 20px; }
+            .steps li { margin: 8px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h2 style="margin: 0;">🔐 Password Reset Request</h2>
+              <p style="margin: 10px 0 0 0;">HR Portal</p>
+            </div>
+            
+            <div class="content">
+              <p>Dear <strong>${fullName}</strong>,</p>
+              
+              <p>We received a request to reset your password for the HR Portal. Your temporary password has been generated.</p>
+              
+              <div class="temp-password-box">
+                <p style="margin: 0; color: #666;">Your Temporary Password:</p>
+                <strong>${tempPassword}</strong>
+              </div>
+              
+              <div class="steps">
+                <p style="margin-top: 0;"><strong>📝 What to do next:</strong></p>
+                <ol>
+                  <li>Go to the HR Portal login page</li>
+                  <li>Enter your Email ID and the temporary password above</li>
+                  <li>After successful login, you will be prompted to change your password</li>
+                  <li>Create a new password of your choice</li>
+                  <li>Your account will be secured with the new password</li>
+                </ol>
+              </div>
+              
+              <p style="margin-top: 30px;">
+                <strong>Best Regards,</strong><br>
+                <strong>HR Department</strong><br>
+              </p>
+              
+              <div class="footer">
+                <p>This is an automated security email. Please do not reply directly.</p>
+                <p>© ${new Date().getFullYear()} HR Portal. All rights reserved.</p>
+                <p>This email contains sensitive information. Please delete it after use.</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
+  static async sendPasswordChangeConfirmationEmail(email, userEmail) {
+    try {
+      const emailContent = this.generatePasswordChangeConfirmationEmail();
+
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'Password Changed Successfully - HR Portal',
+        html: emailContent
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log('✅ Password change confirmation email sent to:', email);
+      return { success: true, recipient: email };
+    } catch (error) {
+      console.error('❌ Error sending password change confirmation email:', error);
+      throw error;
+    }
+  }
+
+  static generatePasswordChangeConfirmationEmail() {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #27ae60; color: white; padding: 20px; border-radius: 5px 5px 0 0; text-align: center; }
+            .content { background-color: #ecf0f1; padding: 20px; border-radius: 0 0 5px 5px; }
+            .success-box { 
+              background-color: #d4edda; 
+              padding: 20px; 
+              border: 2px solid #28a745; 
+              border-radius: 5px; 
+              margin: 20px 0;
+              text-align: center;
+            }
+            .success-box p { margin: 0; color: #155724; font-weight: bold; font-size: 16px; }
+            .info-section { margin: 15px 0; }
+            .footer { font-size: 12px; color: #7f8c8d; margin-top: 20px; text-align: center; }
+            .security-tips { background-color: #e7f3ff; padding: 15px; border-left: 4px solid #0066cc; margin: 15px 0; border-radius: 3px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h2 style="margin: 0;">✅ Password Changed Successfully</h2>
+              <p style="margin: 10px 0 0 0;">HR Portal</p>
+            </div>
+            
+            <div class="content">
+              <p>Dear User,</p>
+              
+              <div class="success-box">
+                <p>Your password has been changed successfully!</p>
+              </div>
+              
+              <p>This confirms that your password for the HR Portal has been updated. You can now log in with your new password.</p>
+              
+              <div class="security-tips">
+                <p style="margin-top: 0;"><strong>🔒 Security Tips:</strong></p>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                  <li>Use a strong password with uppercase, lowercase, numbers, and symbols</li>
+                  <li>Never share your password with anyone, including HR staff</li>
+                  <li>Always log out when using a shared computer</li>
+                  <li>Change your password regularly (every 90 days recommended)</li>
+                  <li>If you suspect unauthorized access, change your password immediately</li>
+                </ul>
+              </div>
+              
+              <div class="info-section">
+                <p><strong>⏰ Change Details:</strong></p>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                  <li><strong>Date & Time:</strong> ${new Date().toLocaleString('en-IN')}</li>
+                  <li><strong>Portal:</strong> HR Portal</li>
+                </ul>
+              </div>
+              
+              <p style="margin-top: 20px;"><strong>If this password change was not initiated by you:</strong></p>
+              <p>Please contact the HR department immediately and reset your password.</p>
+              
+              <p style="margin-top: 30px;">
+                <strong>Best Regards,</strong><br>
+                <strong>HR Department</strong><br>
+                HR Portal Security Team
+              </p>
+              
+              <div class="footer">
+                <p>This is an automated email. Please do not reply directly.</p>
+                <p>© ${new Date().getFullYear()} HR Portal. All rights reserved.</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
 }
 
 module.exports = EmailService;

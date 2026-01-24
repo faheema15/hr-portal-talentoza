@@ -2,8 +2,9 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
+const EmailService = require('../services/emailService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Signup - Complete registration using Employee ID
 exports.signup = async (req, res) => {
@@ -182,8 +183,6 @@ exports.login = async (req, res) => {
     
     // Verify password
     console.log('🔐 Comparing passwords...');
-    console.log('   Password provided:', password);
-    console.log('   Hash in DB:', user.password);
     
     const is_valid = await bcrypt.compare(password, user.password);
     
@@ -225,6 +224,7 @@ exports.login = async (req, res) => {
         user: {
           id: user.id,
           name: user.name,
+          full_name: user.name, 
           email: user.email,
           role: user.role,
           is_active: user.is_active,
@@ -350,6 +350,268 @@ exports.getCurrentUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching user data',
+      error: error.message
+    });
+  }
+};
+
+// Generate random password (8 chars: letters, numbers, symbols)
+const generateRandomPassword = () => {
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+  const numbers = '0123456789';
+  const symbols = '!@#$%^&*';
+  
+  const allChars = uppercase + lowercase + numbers + symbols;
+  let password = '';
+  
+  for (let i = 0; i < 8; i++) {
+    password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+  }
+  
+  return password;
+};
+
+// Forgot Password - Send reset link/token to email
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { emp_id, email } = req.body;
+
+    console.log('🔓 Forgot password attempt:', { emp_id, email });
+
+    if (!emp_id || !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Employee ID and email are required'
+      });
+    }
+
+    // Verify employee exists and email matches
+    const empQuery = `
+      SELECT ed.emp_id, ed.full_name, u.id, u.email
+      FROM employee_details ed
+      JOIN users u ON ed.user_id = u.id
+      WHERE ed.emp_id = $1 AND u.email = $2
+    `;
+
+    const empResult = await pool.query(empQuery, [emp_id, email]);
+
+    if (empResult.rows.length === 0) {
+      console.log('❌ Employee not found or email mismatch');
+      return res.status(404).json({
+        success: false,
+        message: 'Employee ID or email is incorrect'
+      });
+    }
+
+    const { full_name, id: userId } = empResult.rows[0];
+
+    // Generate temporary password
+    const tempPassword = generateRandomPassword();
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+    // Update user password in database
+    await pool.query(
+      'UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [hashedPassword, userId]
+    );
+
+    console.log('✅ Temporary password generated and stored');
+
+    // Send email with temporary password
+    await EmailService.sendForgotPasswordEmail(
+      email,
+      full_name,
+      tempPassword,
+      emp_id
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset email sent successfully. Please check your email for the temporary password.'
+    });
+
+  } catch (error) {
+    console.error('❌ Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error processing forgot password request',
+      error: error.message
+    });
+  }
+};
+
+// Change Password - For authenticated users (Dashboard)
+exports.changePassword = async (req, res) => {
+  try {
+    const userId = req.user.id; // From JWT token
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+
+    console.log('🔐 Change password attempt for user:', userId);
+
+    // Validation
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Old password, new password, and confirmation are required'
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New passwords do not match'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters long'
+      });
+    }
+
+    if (oldPassword === newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password cannot be the same as old password'
+      });
+    }
+
+    // Get current user and verify old password
+    const userQuery = 'SELECT id, password, email FROM users WHERE id = $1';
+    const userResult = await pool.query(userQuery, [userId]);
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // Verify old password
+    const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
+
+    if (!isOldPasswordValid) {
+      console.log('❌ Old password is incorrect');
+      return res.status(401).json({
+        success: false,
+        message: 'Old password is incorrect'
+      });
+    }
+
+    // Hash new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password in database
+    await pool.query(
+      'UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [hashedNewPassword, userId]
+    );
+
+    console.log('✅ Password changed successfully');
+
+    // Send confirmation email
+    await EmailService.sendPasswordChangeConfirmationEmail(
+      user.email,
+      user.email
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Change password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error changing password',
+      error: error.message
+    });
+  }
+};
+
+// Reset Password with Temp Password - Used after forgot password (optional)
+exports.resetPassword = async (req, res) => {
+  try {
+    const { emp_id, email, tempPassword, newPassword, confirmPassword } = req.body;
+
+    console.log('🔄 Reset password attempt:', { emp_id, email });
+
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password and confirmation are required'
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Passwords do not match'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long'
+      });
+    }
+
+    // Verify employee and temp password
+    const empQuery = `
+      SELECT ed.emp_id, u.id, u.password
+      FROM employee_details ed
+      JOIN users u ON ed.user_id = u.id
+      WHERE ed.emp_id = $1 AND u.email = $2
+    `;
+
+    const empResult = await pool.query(empQuery, [emp_id, email]);
+
+    if (empResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found'
+      });
+    }
+
+    const { id: userId, password: hashedTempPassword } = empResult.rows[0];
+
+    // Verify temp password
+    const isTempPasswordValid = await bcrypt.compare(tempPassword, hashedTempPassword);
+
+    if (!isTempPasswordValid) {
+      console.log('❌ Temporary password is incorrect');
+      return res.status(401).json({
+        success: false,
+        message: 'Temporary password is incorrect'
+      });
+    }
+
+    // Hash and update new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    await pool.query(
+      'UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [hashedNewPassword, userId]
+    );
+
+    console.log('✅ Password reset successfully');
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully. You can now login with your new password.'
+    });
+
+  } catch (error) {
+    console.error('❌ Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error resetting password',
       error: error.message
     });
   }

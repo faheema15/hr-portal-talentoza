@@ -8,7 +8,7 @@ function BGV() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isNewEntry = id === "new";
-  const INITIAL_PHOTO = "https://via.placeholder.com/150/cccccc/666666?text=Upload+Photo";
+  const INITIAL_PHOTO = "/default_profile.jpg";
 
   const [formData, setFormData] = useState({
     photo: INITIAL_PHOTO,
@@ -88,7 +88,7 @@ function BGV() {
         const transformedData = {
           photo: bgvInfo.photo 
           ? (bgvInfo.photo.startsWith('http') ? bgvInfo.photo : `${API_BASE_URL}${bgvInfo.photo}`)
-          : INITIAL_PHOTO,
+          : "/default_profile.jpg",
           empId: bgvInfo.empId || "",
           empName: bgvInfo.empName || "",
           

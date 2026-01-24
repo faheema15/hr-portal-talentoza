@@ -1,5 +1,6 @@
 const Attendance = require('../models/Attendance');
 const pool = require('../config/database');
+const AttendanceService = require('../services/attendanceService');
 
 // Create new attendance employee record
 exports.createAttendance = async (req, res) => {
@@ -382,15 +383,16 @@ exports.getDailyAttendanceReport = async (req, res) => {
 };
 
 // Mark today's attendance
+// Mark today's attendance
 exports.markTodayAttendance = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!status || !['present', 'absent', 'leave'].includes(status)) {
+    if (!status || !['present', 'absent', 'leave', 'half_day'].includes(status)) {
       return res.status(400).json({
         success: false,
-        message: 'Valid status is required (present, absent, leave)'
+        message: 'Valid status is required (present, absent, leave, half_day)'
       });
     }
 
@@ -405,6 +407,132 @@ exports.markTodayAttendance = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error marking today\'s attendance',
+      error: error.message
+    });
+  }
+}; // ✅ CLOSE markTodayAttendance HERE
+
+// Initialize attendance for all employees for current month
+exports.initializeMonthlyAttendance = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // Get current month start and end dates
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    
+    const endOfMonth = new Date(startOfMonth);
+    endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+    endOfMonth.setDate(0);
+    
+    const startDate = startOfMonth.toISOString().split('T')[0];
+    const endDate = endOfMonth.toISOString().split('T')[0];
+    
+    // USE THE SERVICE to get holidays from Google Calendar
+    const year = startOfMonth.getFullYear();
+    const holidays = await AttendanceService.getGovernmentHolidays(year);
+    
+    // Initialize attendance for all active employees WITH GOOGLE CALENDAR HOLIDAYS
+    const query = `
+      INSERT INTO attendance_records (emp_id, attendance_date, status)
+      SELECT 
+        ed.emp_id,
+        date_series,
+        CASE 
+          WHEN EXTRACT(DOW FROM date_series) = 0 THEN 'leave'  -- Sunday
+          WHEN date_series = ANY($3::date[]) THEN 'leave'      -- Google Calendar Holidays
+          ELSE 'present'  -- Mon-Sat default to present
+        END
+      FROM employee_details ed
+      CROSS JOIN generate_series($1::date, $2::date, '1 day'::interval) AS date_series
+      ON CONFLICT (emp_id, attendance_date) DO NOTHING
+    `;
+    
+    const result = await client.query(query, [startDate, endDate, holidays]);
+    
+    await client.query('COMMIT');
+    
+    res.status(200).json({
+      success: true,
+      message: `Initialized attendance for current month with ${holidays.length} holidays`,
+      recordsCreated: result.rowCount,
+      dateRange: { startDate, endDate },
+      holidays: holidays
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error initializing monthly attendance:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error initializing monthly attendance',
+      error: error.message
+    });
+  } finally {
+    client.release();
+  }
+};
+
+// Initialize attendance for a specific employee for current month
+exports.initializeEmployeeAttendance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get current month start and end dates
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    
+    const endOfMonth = new Date(startOfMonth);
+    endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+    endOfMonth.setDate(0);
+    
+    const startDate = startOfMonth.toISOString().split('T')[0];
+    const endDate = endOfMonth.toISOString().split('T')[0];
+    
+    // USE THE SERVICE - directly call the service method
+    const recordsCreated = await AttendanceService.initializeAttendanceForRange(
+      id, 
+      startDate, 
+      endDate
+    );
+    
+    res.status(200).json({
+      success: true,
+      message: `Initialized attendance for employee ${id}`,
+      recordsCreated: recordsCreated,
+      dateRange: { startDate, endDate }
+    });
+  } catch (error) {
+    console.error('Error initializing employee attendance:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error initializing employee attendance',
+      error: error.message
+    });
+  }
+};
+
+// Get government holidays for a year
+exports.getGovernmentHolidays = async (req, res) => {
+  try {
+    const { year } = req.query;
+    const targetYear = year ? parseInt(year) : new Date().getFullYear();
+    
+    const holidays = await AttendanceService.getGovernmentHolidays(targetYear);
+    
+    res.status(200).json({
+      success: true,
+      year: targetYear,
+      holidays: holidays,
+      count: holidays.length
+    });
+  } catch (error) {
+    console.error('Error fetching holidays:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching holidays',
       error: error.message
     });
   }

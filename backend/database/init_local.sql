@@ -280,11 +280,16 @@ CREATE TABLE leave_applications (
     to_date DATE NOT NULL,
     reason TEXT,
     status VARCHAR(20) DEFAULT 'Pending' CHECK (status IN ('Pending', 'Approved', 'Rejected', 'Cancelled')),
+    total_days DECIMAL(3,1) DEFAULT 1,
+    duration VARCHAR(50) DEFAULT 'full',
+    from_date_duration VARCHAR(50) DEFAULT 'full',
+    to_date_duration VARCHAR(50) DEFAULT 'full',
+    day_wise_details JSONB DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 18. Attendance
+-- 18. Attendance (OLD - Keep for compatibility if needed)
 CREATE TABLE attendance (
     id SERIAL PRIMARY KEY,
     emp_id INTEGER REFERENCES employee_details(emp_id) ON DELETE CASCADE,
@@ -299,11 +304,12 @@ CREATE TABLE attendance (
     UNIQUE(emp_id, date)
 );
 
+-- *** CHANGED: Updated attendance_records status check to include 'half_day' ***
 CREATE TABLE attendance_records (
     id SERIAL PRIMARY KEY,
     emp_id INTEGER REFERENCES employee_details(emp_id) ON DELETE CASCADE,
     attendance_date DATE NOT NULL,
-    status VARCHAR(20) NOT NULL CHECK (status IN ('present', 'absent', 'leave')),
+    status VARCHAR(20) NOT NULL CHECK (status IN ('present', 'absent', 'leave', 'half_day')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(emp_id, attendance_date)
@@ -378,9 +384,8 @@ CREATE TABLE claim_history (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-
 -- 23. Offer letters 
-    CREATE TABLE offer_letters (
+CREATE TABLE offer_letters (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     mobile VARCHAR(20),
@@ -428,12 +433,39 @@ CREATE INDEX idx_team_projects_project_id ON team_projects(project_id);
 
 
 -- ======================================================
--- TRIGGER FUNCTION
+-- TRIGGER FUNCTION FOR UPDATED_AT
 -- ======================================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- ======================================================
+-- *** NEW: AUTO-INITIALIZE ATTENDANCE FUNCTION ***
+-- ======================================================
+CREATE OR REPLACE FUNCTION initialize_employee_attendance()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Initialize attendance for the current month when a new employee is added
+    INSERT INTO attendance_records (emp_id, attendance_date, status)
+    SELECT 
+        NEW.emp_id,
+        date_series,
+        CASE 
+            WHEN EXTRACT(DOW FROM date_series) = 0 THEN 'leave'  -- Sunday = leave (yellow)
+            ELSE 'present'  -- Mon-Sat = present (green)
+        END
+    FROM generate_series(
+        DATE_TRUNC('month', CURRENT_DATE)::date,
+        (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month - 1 day')::date,
+        '1 day'::interval
+    ) AS date_series
+    ON CONFLICT (emp_id, attendance_date) DO NOTHING;
+    
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -468,6 +500,13 @@ CREATE TRIGGER update_claim_history_updated_at BEFORE UPDATE ON claim_history FO
 CREATE TRIGGER update_pending_signups_updated_at BEFORE UPDATE ON pending_signups FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_offer_letters_updated_at BEFORE UPDATE ON offer_letters FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_team_projects_updated_at BEFORE UPDATE ON team_projects FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- *** NEW: Trigger to auto-initialize attendance when employee is created ***
+CREATE TRIGGER auto_init_attendance
+AFTER INSERT ON employee_details
+FOR EACH ROW
+EXECUTE FUNCTION initialize_employee_attendance();
+
 
 -- ======================================================
 -- DEFAULT ADMIN USER
@@ -516,3 +555,4 @@ ALTER DATABASE hr_portal_db OWNER TO hr_user;
 COMMENT ON DATABASE hr_portal_db IS 'HR Portal Database - Local Development';
 COMMENT ON TABLE team_members IS 'Employees can belong to multiple teams.';
 COMMENT ON TABLE pending_signups IS 'Temporary storage for employee signup workflow.';
+COMMENT ON TABLE attendance_records IS 'Auto-initialized: Mon-Sat=present(green), Sun=leave(yellow), Approved leaves=absent(red), Half-day=half_day(orange)';

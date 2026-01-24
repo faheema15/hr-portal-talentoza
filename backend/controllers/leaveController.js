@@ -1,11 +1,19 @@
 const Leave = require('../models/Leave');
 const pool = require('../config/database');
+const AttendanceService = require('../services/attendanceService');
 const EmailService = require('../services/emailService');
 
-// Create new leave record
 exports.createLeave = async (req, res) => {
   try {
-    const { empId, leaveFromDate, leaveToDate, leaveApplyType, reasonForLeave, duration } = req.body;
+    const { 
+      empId, 
+      leaveFromDate, 
+      leaveToDate, 
+      leaveApplyType, 
+      reasonForLeave,
+      totalDays,
+      dayWiseDetails
+    } = req.body;
 
     // Validate required fields
     if (!empId || !leaveFromDate || !leaveToDate || !leaveApplyType) {
@@ -42,21 +50,29 @@ exports.createLeave = async (req, res) => {
       leaveToDate,
       leaveApplyType,
       reasonForLeave,
-      leaveApprovalStatus: 'Pending'
+      leaveApprovalStatus: 'Pending',
+      totalDays: totalDays || 1,
+      dayWiseDetails: dayWiseDetails || null
     });
 
     try {
-      // Send approval emails
+      // **FIX: Create properly formatted leave data for email**
+      const leaveDataForEmail = {
+        _id: leave.id,
+        leaveApplyType: leave.leave_type,  // Map database field to expected field
+        leaveFromDate: leave.from_date,    // Map database field to expected field
+        leaveToDate: leave.to_date,        // Map database field to expected field
+        reasonForLeave: leave.reason,
+        totalDays: leave.total_days || totalDays || 1
+      };
+
+      // Send approval emails with properly formatted data
       await EmailService.sendLeaveApprovalEmail(
-        {
-          ...leave,
-          duration
-        },
+        leaveDataForEmail,
         empData
       );
     } catch (emailError) {
       console.error('Email sending failed, but leave was created:', emailError);
-      // Don't fail the leave creation if email fails
     }
 
     res.status(201).json({
@@ -74,12 +90,15 @@ exports.createLeave = async (req, res) => {
   }
 };
 
-// Get all leave records
+// Add this to your leaveController.js or replace the getAllLeaves function
+
+// Get all leave records with employee information
 exports.getAllLeaves = async (req, res) => {
   try {
     const leaves = await Leave.findAll();
     res.status(200).json({
       success: true,
+      count: leaves.length,
       data: leaves
     });
   } catch (error) {
@@ -213,7 +232,14 @@ exports.getLeaveById = async (req, res) => {
 // Get leave history by employee ID
 exports.getLeaveHistory = async (req, res) => {
   try {
-    const leaves = await Leave.findAllByEmpId(req.params.id);
+    const empId = req.params.id;
+    
+    console.log('Fetching leave history for emp_id:', empId);
+    
+    const leaves = await Leave.findAllByEmpId(empId);
+    
+    console.log('Leave history found:', leaves.length);
+    
     res.status(200).json({
       success: true,
       data: leaves
@@ -295,7 +321,10 @@ exports.getLeavesByDateRange = async (req, res) => {
 
 // Update leave status (with email notification)
 exports.updateLeaveStatus = async (req, res) => {
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+    
     const { leaveApprovalStatus } = req.body;
     const leaveId = req.params.id;
     
@@ -314,8 +343,9 @@ exports.updateLeaveStatus = async (req, res) => {
       WHERE la.id = $1
     `;
     
-    const leaveResult = await pool.query(leaveQuery, [leaveId]);
+    const leaveResult = await client.query(leaveQuery, [leaveId]);
     if (leaveResult.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({
         success: false,
         message: 'Leave record not found'
@@ -323,12 +353,34 @@ exports.updateLeaveStatus = async (req, res) => {
     }
 
     const leaveData = leaveResult.rows[0];
+    const previousStatus = leaveData.status;
 
-    // Update status
-    const updatedLeave = await Leave.updateStatus(leaveId, leaveApprovalStatus);
+    // Update leave status
+    const updateLeaveQuery = `
+      UPDATE leave_applications 
+      SET status = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING *
+    `;
+    const updatedLeave = await client.query(updateLeaveQuery, [leaveApprovalStatus, leaveId]);
 
+    await client.query('COMMIT');
+
+    // **USE THE SERVICE for attendance updates (outside transaction)**
     try {
-      // Send confirmation email to employee
+      if (leaveApprovalStatus === 'Approved') {
+        await AttendanceService.markLeaveAsAbsent(leaveId);
+      } else if (leaveApprovalStatus === 'Rejected' && previousStatus === 'Approved') {
+        await AttendanceService.revertLeaveToPresent(leaveId);
+      }
+    } catch (attendanceError) {
+      console.error('Error updating attendance:', attendanceError);
+      // Don't fail the whole request if attendance update fails
+    }
+
+    // Send email notification
+    try {
+      const EmailService = require('../services/emailService');
       await EmailService.sendLeaveApprovalConfirmation(
         leaveData,
         leaveData,
@@ -341,15 +393,18 @@ exports.updateLeaveStatus = async (req, res) => {
     res.status(200).json({
       success: true,
       message: `Leave status updated to ${leaveApprovalStatus}`,
-      data: updatedLeave
+      data: updatedLeave.rows[0]
     });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error updating leave status:', error);
     res.status(500).json({
       success: false,
       message: 'Error updating leave status',
       error: error.message
     });
+  } finally {
+    client.release();
   }
 };
 
@@ -445,4 +500,28 @@ exports.getLeaveStatistics = async (req, res) => {
       error: error.message
     });
   }
+
+  // Get government holidays for a year
+exports.getGovernmentHolidays = async (req, res) => {
+  try {
+    const { year } = req.query;
+    const targetYear = year ? parseInt(year) : new Date().getFullYear();
+    
+    const holidays = await AttendanceService.getGovernmentHolidays(targetYear);
+    
+    res.status(200).json({
+      success: true,
+      year: targetYear,
+      holidays: holidays,
+      count: holidays.length
+    });
+  } catch (error) {
+    console.error('Error fetching holidays:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching holidays',
+      error: error.message
+    });
+  }
+};
 };

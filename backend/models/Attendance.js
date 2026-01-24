@@ -81,16 +81,16 @@ class Attendance {
 
   // Create single attendance record
   static async createAttendanceRecord(data) {
-    const query = `
-      INSERT INTO attendance_records (emp_id, attendance_date, status)
-      VALUES ($1, $2, $3)
-      ON CONFLICT (emp_id, attendance_date) 
-      DO UPDATE SET status = $3, updated_at = CURRENT_TIMESTAMP
-      RETURNING *
-    `;
-    const result = await pool.query(query, [data.empId, data.attendanceDate, data.status]);
-    return result.rows[0];
-  }
+  const query = `
+    INSERT INTO attendance_records (emp_id, attendance_date, status)
+    VALUES ($1, $2, $3)
+    ON CONFLICT (emp_id, attendance_date) 
+    DO UPDATE SET status = $3, updated_at = CURRENT_TIMESTAMP
+    RETURNING *
+  `;
+  const result = await pool.query(query, [data.empId, data.attendanceDate, data.status]);
+  return result.rows[0];
+}
 
   // Create bulk attendance records
   static async createBulkAttendanceRecords(records) {

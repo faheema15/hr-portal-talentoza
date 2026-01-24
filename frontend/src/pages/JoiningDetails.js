@@ -8,7 +8,7 @@ function JoiningDetails() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isNewEmployee = id === "new";
-  const INITIAL_PHOTO = "https://via.placeholder.com/150/cccccc/666666?text=Upload+Photo";
+  const INITIAL_PHOTO = "/default_profile.jpg";
 
   const [formData, setFormData] = useState({
     empId: "",

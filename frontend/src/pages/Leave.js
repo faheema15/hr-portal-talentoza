@@ -7,7 +7,7 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 function Leave() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const INITIAL_PHOTO = "https://via.placeholder.com/150/cccccc/666666?text=Upload+Photo";
+  const INITIAL_PHOTO = "/default_profile.jpg";
 
   const [formData, setFormData] = useState({
     photo: INITIAL_PHOTO,
@@ -46,18 +46,58 @@ function Leave() {
   const [showLeavePolicy, setShowLeavePolicy] = useState(false);
   const [activeTab, setActiveTab] = useState('types');
   const [newLeaveApplication, setNewLeaveApplication] = useState({
-    leaveApplyType: "",
-    leaveFromDate: "",
-    leaveToDate: "",
-    reasonForLeave: "",
-    duration: "full"
-  });
+  leaveApplyType: "",
+  leaveFromDate: "",
+  leaveToDate: "",
+  reasonForLeave: "",
+  leaveApprovalStatus: "Pending"
+});
+
+const [dayWiseSelection, setDayWiseSelection] = useState({});
+const [allDates, setAllDates] = useState([]);
 
   const currentUser = getCurrentUser();
   const isEmployee = currentUser?.role === 'Employee';
   const isHR = currentUser?.role === 'HR';
   const isManager = currentUser?.role === 'Manager';
   const isSkipManager = currentUser?.role === 'Skip Manager';
+
+  // Calculate dates between from and to
+const generateDateRange = (fromDate, toDate) => {
+  if (!fromDate || !toDate) return [];
+  
+  const from = new Date(fromDate);
+  const to = new Date(toDate);
+  
+  if (from > to) return [];
+  
+  const dates = [];
+  const current = new Date(from);
+  
+  while (current <= to) {
+    const dateStr = current.toISOString().split('T')[0];
+    dates.push(dateStr);
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return dates;
+};
+
+// Calculate total leave days
+const calculateTotalDays = (selection) => {
+  let total = 0;
+  Object.values(selection).forEach(duration => {
+    if (duration === 'full') total += 1;
+    else total += 0.5;
+  });
+  return total;
+};
+
+// Format date for display
+const formatDateDisplay = (dateStr) => {
+  const date = new Date(dateStr + 'T00:00:00');
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+};
 
   const leavePolicy = [
     { type: "Casual Leave", days: 10 },
@@ -99,150 +139,178 @@ function Leave() {
   }, [formData.sickLeavesAllocated, formData.sickLeavesConsumed, formData.rhAllocated, formData.rhConsumed, formData.plAllocated, formData.plConsumed]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const empIdToFetch = id !== "new" ? id : currentUser?.emp_id;
-      
-      if (!empIdToFetch || empIdToFetch === "new") {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const token = sessionStorage.getItem('token');
-        
-        if (!token) {
-          setError('Session expired. Please login again.');
-          setLoading(false);
-          return;
-        }
-
-        const response = await fetch(`${API_BASE_URL}/api/leave/${empIdToFetch}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch leave details');
-        }
-
-        const data = await response.json();
-        const leaveInfo = data.data;
-        
-        const transformedData = {
-          photo: leaveInfo.photo 
-          ? (leaveInfo.photo.startsWith('http') ? leaveInfo.photo : `${API_BASE_URL}${leaveInfo.photo}`)
-          : INITIAL_PHOTO,
-          empId: leaveInfo.empId || "",
-          empName: leaveInfo.empName || "",
-          designation: leaveInfo.designation || "",
-          department: leaveInfo.department || "",
-          departmentId: leaveInfo.departmentId || "",
-          reportingManagerName: leaveInfo.reportingManagerName || "Not Assigned",
-          contact1: leaveInfo.contact1 || "",
-          contact2: leaveInfo.contact2 || "",
-          mailId1: leaveInfo.mailId1 || "",
-          mailId2: leaveInfo.mailId2 || "",
-          sickLeavesAllocated: leaveInfo.sickLeavesAllocated || "",
-          sickLeavesConsumed: leaveInfo.sickLeavesConsumed || "",
-          sickLeavesRemaining: leaveInfo.sickLeavesRemaining || "",
-          rhAllocated: leaveInfo.rhAllocated || "",
-          rhConsumed: leaveInfo.rhConsumed || "",
-          rhRemaining: leaveInfo.rhRemaining || "",
-          plAllocated: leaveInfo.plAllocated || "",
-          plConsumed: leaveInfo.plConsumed || "",
-          plRemaining: leaveInfo.plRemaining || "",
-          leaveApplyType: leaveInfo.leaveApplyType || "",
-          leaveFromDate: formatDateForInput(leaveInfo.leaveFromDate) || "",
-          leaveToDate: formatDateForInput(leaveInfo.leaveToDate) || "",
-          reasonForLeave: leaveInfo.reasonForLeave || "",
-          leaveApprovalStatus: leaveInfo.leaveApprovalStatus || "Pending"
-        };
-        
-        setFormData(transformedData);
-        setOriginalData(transformedData);
-        setPhotoPreview(transformedData.photo);
-        setError(null);
-
-        // Fetch leave history
-        const leaveListResponse = await fetch(`${API_BASE_URL}/api/leave-list/${empIdToFetch}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (leaveListResponse.ok) {
-          const leaveListData = await leaveListResponse.json();
-          setLeaveHistory(leaveListData.data || []);
-        }
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setError(err.message || "Failed to load data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [id, currentUser?.emp_id]);
-
-  const handleApplyLeave = async () => {
-    if (!newLeaveApplication.leaveApplyType || !newLeaveApplication.leaveFromDate || !newLeaveApplication.leaveToDate) {
-      alert("Please fill all required fields");
+  const fetchData = async () => {
+    const empIdToFetch = id !== "new" ? id : currentUser?.emp_id;
+    
+    if (!empIdToFetch || empIdToFetch === "new") {
+      setLoading(false);
       return;
     }
 
     try {
+      setLoading(true);
       const token = sessionStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/leave`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          ...newLeaveApplication,
-          empId: formData.empId,
-          leaveApprovalStatus: "Pending"
-        }),
+      
+      if (!token) {
+        setError('Session expired. Please login again.');
+        setLoading(false);
+        return;
+      }
+
+      // Fetch employee details
+      const response = await fetch(`${API_BASE_URL}/api/leave/${empIdToFetch}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
-      const result = await response.json();
-      if (result.success) {
-        alert(result.message || "Leave applied successfully!");
-        setShowApplyForm(false);
-        setNewLeaveApplication({ leaveApplyType: "", leaveFromDate: "", leaveToDate: "", reasonForLeave: "", duration: "full" });
-        window.location.reload();
-      } else {
-        alert(result.message || "Error applying leave!");
+      if (!response.ok) {
+        throw new Error('Failed to fetch leave details');
       }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Error applying leave!");
+
+      const data = await response.json();
+      const leaveInfo = data.data;
+      
+      const transformedData = {
+        photo: leaveInfo.photo 
+        ? (leaveInfo.photo.startsWith('http') ? leaveInfo.photo : `${API_BASE_URL}${leaveInfo.photo}`)
+        : "/default_profile.jpg",
+        empId: leaveInfo.empId || "",
+        empName: leaveInfo.empName || "",
+        designation: leaveInfo.designation || "",
+        department: leaveInfo.department || "",
+        departmentId: leaveInfo.departmentId || "",
+        reportingManagerName: leaveInfo.reportingManagerName || "Not Assigned",
+        contact1: leaveInfo.contact1 || "",
+        contact2: leaveInfo.contact2 || "",
+        mailId1: leaveInfo.mailId1 || "",
+        mailId2: leaveInfo.mailId2 || "",
+        sickLeavesAllocated: leaveInfo.sickLeavesAllocated || "",
+        sickLeavesConsumed: leaveInfo.sickLeavesConsumed || "",
+        sickLeavesRemaining: leaveInfo.sickLeavesRemaining || "",
+        rhAllocated: leaveInfo.rhAllocated || "",
+        rhConsumed: leaveInfo.rhConsumed || "",
+        rhRemaining: leaveInfo.rhRemaining || "",
+        plAllocated: leaveInfo.plAllocated || "",
+        plConsumed: leaveInfo.plConsumed || "",
+        plRemaining: leaveInfo.plRemaining || "",
+        leaveApplyType: leaveInfo.leaveApplyType || "",
+        leaveFromDate: formatDateForInput(leaveInfo.leaveFromDate) || "",
+        leaveToDate: formatDateForInput(leaveInfo.leaveToDate) || "",
+        reasonForLeave: leaveInfo.reasonForLeave || "",
+        leaveApprovalStatus: leaveInfo.leaveApprovalStatus || "Pending"
+      };
+      
+      setFormData(transformedData);
+      setOriginalData(transformedData);
+      setPhotoPreview(transformedData.photo);
+      setError(null);
+
+      // Fetch leave history
+      console.log('Fetching leave history for:', empIdToFetch);
+      const leaveListResponse = await fetch(`${API_BASE_URL}/api/leave/leave-list/${empIdToFetch}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      console.log('Leave list response status:', leaveListResponse.status);
+      
+      if (leaveListResponse.ok) {
+        const leaveListData = await leaveListResponse.json();
+        console.log('Leave history data:', leaveListData);
+        setLeaveHistory(leaveListData.data || []);
+      } else {
+        console.error('Failed to fetch leave history:', leaveListResponse.status);
+        setLeaveHistory([]);
+      }
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError(err.message || "Failed to load data");
+    } finally {
+      setLoading(false);
     }
   };
+
+  fetchData();
+}, [id, currentUser?.emp_id]);
+
+  const handleApplyLeave = async () => {
+  if (!newLeaveApplication.leaveApplyType || !newLeaveApplication.leaveFromDate || !newLeaveApplication.leaveToDate) {
+    alert("Please fill all required fields");
+    return;
+  }
+
+  if (Object.keys(dayWiseSelection).length === 0) {
+    alert("Please select duration for at least one day");
+    return;
+  }
+
+  try {
+    const totalDays = calculateTotalDays(dayWiseSelection);
+    
+    const token = sessionStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/leave`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        empId: formData.empId,
+        leaveApplyType: newLeaveApplication.leaveApplyType,
+        leaveFromDate: newLeaveApplication.leaveFromDate,
+        leaveToDate: newLeaveApplication.leaveToDate,
+        reasonForLeave: newLeaveApplication.reasonForLeave,
+        leaveApprovalStatus: "Pending",
+        totalDays: totalDays,
+        dayWiseDetails: dayWiseSelection
+      }),
+    });
+
+    const result = await response.json();
+    if (result.success) {
+      alert(result.message || "Leave applied successfully!");
+      setShowApplyForm(false);
+      setNewLeaveApplication({ 
+        leaveApplyType: "", 
+        leaveFromDate: "", 
+        leaveToDate: "", 
+        reasonForLeave: "", 
+        leaveApprovalStatus: "Pending" 
+      });
+      setDayWiseSelection({});
+      setAllDates([]);
+      window.location.reload();
+    } else {
+      alert(result.message || "Error applying leave!");
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    alert("Error applying leave!");
+  }
+};
 
   const handleApproveReject = async (leaveId, status) => {
-    try {
-      const token = sessionStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/leave/${leaveId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ leaveApprovalStatus: status }),
-      });
+  try {
+    const token = sessionStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/leave/${leaveId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ leaveApprovalStatus: status }),
+    });
 
-      const result = await response.json();
-      if (result.success) {
-        alert(`Leave ${status} successfully!`);
-        window.location.reload();
-      } else {
-        alert(result.message || "Error updating leave!");
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Error updating leave!");
+    const result = await response.json();
+    if (result.success) {
+      alert(`Leave ${status} successfully!`);
+      window.location.reload();
+    } else {
+      alert(result.message || "Error updating leave!");
     }
-  };
+  } catch (error) {
+    console.error("Error:", error);
+    alert("Error updating leave!");
+  }
+};
 
   const calculateLeaveStats = () => {
     const today = new Date();
@@ -325,6 +393,25 @@ function Leave() {
       </div>
     );
   }
+
+  const initializeDayWiseSelection = (dates) => {
+  if (dates.length === 0) return;
+  
+  const newSelection = {};
+  dates.forEach((date, index) => {
+    if (dates.length === 1) {
+      newSelection[date] = 'full';
+    } else if (index === 0) {
+      newSelection[date] = 'half_second'; // First day - second half
+    } else if (index === dates.length - 1) {
+      newSelection[date] = 'half_first'; // Last day - first half
+    } else {
+      newSelection[date] = 'full'; // Middle days - full
+    }
+  });
+  
+  setDayWiseSelection(newSelection);
+};
 
   return (
     <div className="min-vh-100 bg-light">
@@ -513,52 +600,54 @@ function Leave() {
                       </tr>
                     </thead>
                     <tbody>
-                      {leaveHistory.length > 0 ? (
-                        leaveHistory.map((leave, index) => (
-                          <tr key={index}>
-                            <td>{formatDateForInput(leave.leaveFromDate)}</td>
-                            <td>{formatDateForInput(leave.leaveToDate)}</td>
-                            <td>
-                              {Math.ceil((new Date(leave.leaveToDate) - new Date(leave.leaveFromDate)) / (1000 * 60 * 60 * 24) + 1)}
-                            </td>
-                            <td>{leave.duration || "Full"}</td>
-                            <td>{formatDateForInput(leave.createdAt)}</td>
-                            <td>{leave.leaveApplyType}</td>
-                            <td>
-                              <span className={`badge bg-${leave.leaveApprovalStatus === 'Approved' ? 'success' : leave.leaveApprovalStatus === 'Pending' ? 'warning' : 'danger'}`}>
-                                {leave.leaveApprovalStatus}
-                              </span>
-                            </td>
-                            {(isHR || isManager || isSkipManager) && (
-                              <td>
-                                {leave.leaveApprovalStatus === 'Pending' && (
-                                  <>
-                                    <button
-                                      className="btn btn-sm btn-success me-2"
-                                      onClick={() => handleApproveReject(leave._id, 'Approved')}
-                                    >
-                                      Approve
-                                    </button>
-                                    <button
-                                      className="btn btn-sm btn-danger"
-                                      onClick={() => handleApproveReject(leave._id, 'Rejected')}
-                                    >
-                                      Reject
-                                    </button>
-                                  </>
-                                )}
-                              </td>
-                            )}
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="8" className="text-center text-muted py-4">
-                            No leave applications found
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
+  {leaveHistory.length > 0 ? (
+    leaveHistory.map((leave, index) => (
+      <tr key={leave._id || leave.id || index}>
+        <td>{formatDateForInput(leave.leaveFromDate)}</td>
+        <td>{formatDateForInput(leave.leaveToDate)}</td>
+        <td>{leave.total_days || 1}</td>
+        <td>{leave.duration || "Full"}</td>
+        <td>{formatDateForInput(leave.createdAt)}</td>
+        <td>{leave.leaveApplyType}</td>
+        <td>
+          <span className={`badge bg-${
+            leave.leaveApprovalStatus === 'Approved' ? 'success' : 
+            leave.leaveApprovalStatus === 'Pending' ? 'warning' : 
+            'danger'
+          }`}>
+            {leave.leaveApprovalStatus}
+          </span>
+        </td>
+        {(isHR || isManager || isSkipManager) && (
+          <td>
+            {leave.leaveApprovalStatus === 'Pending' && (
+              <>
+                <button
+                  className="btn btn-sm btn-success me-2"
+                  onClick={() => handleApproveReject(leave._id || leave.id, 'Approved')}
+                >
+                  Approve
+                </button>
+                <button
+                  className="btn btn-sm btn-danger"
+                  onClick={() => handleApproveReject(leave._id || leave.id, 'Rejected')}
+                >
+                  Reject
+                </button>
+              </>
+            )}
+          </td>
+        )}
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td colSpan="8" className="text-center text-muted py-4">
+        No leave applications found
+      </td>
+    </tr>
+  )}
+</tbody>
                   </table>
                 </div>
               </div>
@@ -594,102 +683,236 @@ function Leave() {
 
       {/* Apply Leave Modal */}
       {showApplyForm && (
-        <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title fw-bold">Apply for Leave</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowApplyForm(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Type of Leave *</label>
-                  <select
-                    className="form-select"
-                    value={newLeaveApplication.leaveApplyType}
-                    onChange={(e) => setNewLeaveApplication({ ...newLeaveApplication, leaveApplyType: e.target.value })}
-                  >
-                    <option value="">Select Leave Type</option>
-                    <option value="Sick Leave">Sick Leave</option>
-                    <option value="Casual Leave">Casual Leave</option>
-                    <option value="Earned Leave">Earned Leave</option>
-                    <option value="Parental Leave">Parental Leave</option>
-                    <option value="Compensatory Off">Compensatory Off</option>
-                    <option value="Loss of Pay">Loss of Pay</option>
-                    <option value="Bereavement Leave">Bereavement Leave</option>
-                    <option value="Marriage Leave">Marriage Leave</option>
-                  </select>
-                </div>
+  <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+    <div className="modal-dialog modal-lg">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title fw-bold">Apply for Leave</h5>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => {
+              setShowApplyForm(false);
+              setDayWiseSelection({});
+              setAllDates([]);
+            }}
+          ></button>
+        </div>
+        <div className="modal-body">
+          {/* Leave Type */}
+          <div className="mb-4">
+            <label className="form-label fw-semibold">Type of Leave *</label>
+            <select
+              className="form-select"
+              value={newLeaveApplication.leaveApplyType}
+              onChange={(e) => setNewLeaveApplication({ ...newLeaveApplication, leaveApplyType: e.target.value })}
+            >
+              <option value="">Select Leave Type</option>
+              <option value="Sick Leave">Sick Leave</option>
+              <option value="Casual Leave">Casual Leave</option>
+              <option value="Earned Leave">Earned Leave</option>
+              <option value="Parental Leave">Parental Leave</option>
+              <option value="Compensatory Off">Compensatory Off</option>
+              <option value="Loss of Pay">Loss of Pay</option>
+              <option value="Bereavement Leave">Bereavement Leave</option>
+              <option value="Marriage Leave">Marriage Leave</option>
+            </select>
+          </div>
 
-                <div className="row g-3 mb-3">
-                  <div className="col-md-6">
-                    <label className="form-label fw-semibold">From Date *</label>
-                    <input
-                      type="date"
-                      className="form-control"
-                      value={newLeaveApplication.leaveFromDate}
-                      onChange={(e) => setNewLeaveApplication({ ...newLeaveApplication, leaveFromDate: e.target.value })}
-                    />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label fw-semibold">To Date *</label>
-                    <input
-                      type="date"
-                      className="form-control"
-                      value={newLeaveApplication.leaveToDate}
-                      onChange={(e) => setNewLeaveApplication({ ...newLeaveApplication, leaveToDate: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Duration</label>
-                  <select
-                    className="form-select"
-                    value={newLeaveApplication.duration}
-                    onChange={(e) => setNewLeaveApplication({ ...newLeaveApplication, duration: e.target.value })}
-                  >
-                    <option value="full">Full Day</option>
-                    <option value="half">Half Day</option>
-                  </select>
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Reason for Leave</label>
-                  <textarea
-                    className="form-control"
-                    rows="3"
-                    placeholder="Enter reason for leave"
-                    value={newLeaveApplication.reasonForLeave}
-                    onChange={(e) => setNewLeaveApplication({ ...newLeaveApplication, reasonForLeave: e.target.value })}
-                  ></textarea>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowApplyForm(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={handleApplyLeave}
-                >
-                  <i className="bi bi-check-circle me-2"></i>
-                  Apply for Leave
-                </button>
-              </div>
+          {/* Date Range */}
+          <div className="row g-3 mb-4">
+            <div className="col-md-6">
+              <label className="form-label fw-semibold">From Date *</label>
+              <input
+                type="date"
+                className="form-control"
+                value={newLeaveApplication.leaveFromDate}
+                onChange={(e) => {
+                  setNewLeaveApplication({ ...newLeaveApplication, leaveFromDate: e.target.value });
+                  const dates = generateDateRange(e.target.value, newLeaveApplication.leaveToDate);
+                  setAllDates(dates);
+                  initializeDayWiseSelection(dates);
+                }}
+              />
+            </div>
+            <div className="col-md-6">
+              <label className="form-label fw-semibold">To Date *</label>
+              <input
+                type="date"
+                className="form-control"
+                value={newLeaveApplication.leaveToDate}
+                onChange={(e) => {
+                  setNewLeaveApplication({ ...newLeaveApplication, leaveToDate: e.target.value });
+                  const dates = generateDateRange(newLeaveApplication.leaveFromDate, e.target.value);
+                  setAllDates(dates);
+                  initializeDayWiseSelection(dates);
+                }}
+              />
             </div>
           </div>
+
+          {/* Day-wise Selection */}
+          {allDates.length > 0 && (
+            <div className="mb-4">
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <label className="fw-semibold mb-0">Select Duration for Each Day *</label>
+                <span className="badge bg-info">
+                  Total: <strong>{calculateTotalDays(dayWiseSelection)}</strong> days
+                </span>
+              </div>
+
+              {allDates.length === 1 ? (
+                // Single Day View
+                <div className="card border-light bg-light">
+                  <div className="card-body p-3">
+                    <div className="d-flex justify-content-between align-items-center">
+                      <span className="fw-semibold">{formatDateDisplay(allDates[0])}</span>
+                      <div className="btn-group btn-group-sm" role="group">
+                        <input
+                          type="radio"
+                          className="btn-check"
+                          id={`${allDates[0]}_full`}
+                          checked={dayWiseSelection[allDates[0]] === 'full'}
+                          onChange={() => setDayWiseSelection({ ...dayWiseSelection, [allDates[0]]: 'full' })}
+                        />
+                        <label className="btn btn-outline-primary" htmlFor={`${allDates[0]}_full`}>
+                          Full Day
+                        </label>
+
+                        <input
+                          type="radio"
+                          className="btn-check"
+                          id={`${allDates[0]}_half_first`}
+                          checked={dayWiseSelection[allDates[0]] === 'half_first'}
+                          onChange={() => setDayWiseSelection({ ...dayWiseSelection, [allDates[0]]: 'half_first' })}
+                        />
+                        <label className="btn btn-outline-primary" htmlFor={`${allDates[0]}_half_first`}>
+                          1st Half
+                        </label>
+
+                        <input
+                          type="radio"
+                          className="btn-check"
+                          id={`${allDates[0]}_half_second`}
+                          checked={dayWiseSelection[allDates[0]] === 'half_second'}
+                          onChange={() => setDayWiseSelection({ ...dayWiseSelection, [allDates[0]]: 'half_second' })}
+                        />
+                        <label className="btn btn-outline-primary" htmlFor={`${allDates[0]}_half_second`}>
+                          2nd Half
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Multiple Days View - Grid Layout
+                <div>
+                  <div className="row g-2">
+                    {allDates.map((date, index) => (
+                      <div key={date} className="col-md-6">
+                        <div className="card border-light h-100">
+                          <div className="card-body p-3">
+                            <div className="mb-2">
+                              <small className="text-muted d-block mb-2">
+                                {index === 0 ? '📍 First Day' : index === allDates.length - 1 ? '📍 Last Day' : `Day ${index + 1}`}
+                              </small>
+                              <strong className="d-block text-primary">{formatDateDisplay(date)}</strong>
+                            </div>
+
+                            <div className="btn-group btn-group-sm w-100" role="group">
+                              <input
+                                type="radio"
+                                className="btn-check"
+                                id={`${date}_full`}
+                                checked={dayWiseSelection[date] === 'full'}
+                                onChange={() => setDayWiseSelection({ ...dayWiseSelection, [date]: 'full' })}
+                              />
+                              <label className="btn btn-outline-primary" htmlFor={`${date}_full`}>
+                                Full
+                              </label>
+
+                              <input
+                                type="radio"
+                                className="btn-check"
+                                id={`${date}_half_first`}
+                                checked={dayWiseSelection[date] === 'half_first'}
+                                onChange={() => setDayWiseSelection({ ...dayWiseSelection, [date]: 'half_first' })}
+                              />
+                              <label className="btn btn-outline-primary" htmlFor={`${date}_half_first`}>
+                                1st half
+                              </label>
+
+                              <input
+                                type="radio"
+                                className="btn-check"
+                                id={`${date}_half_second`}
+                                checked={dayWiseSelection[date] === 'half_second'}
+                                onChange={() => setDayWiseSelection({ ...dayWiseSelection, [date]: 'half_second' })}
+                              />
+                              <label className="btn btn-outline-primary" htmlFor={`${date}_half_second`}>
+                                2nd half
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Summary */}
+                  <div className="alert alert-info mt-3 py-2">
+                    <small>
+                      <i className="bi bi-info-circle me-2"></i>
+                      <strong>Total: {calculateTotalDays(dayWiseSelection)} days</strong>
+                      {' • '}
+                      Full days: {Object.values(dayWiseSelection).filter(d => d === 'full').length}
+                      {' • '}
+                      Half days: {Object.values(dayWiseSelection).filter(d => d !== 'full').length}
+                    </small>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Reason */}
+          <div className="mb-3">
+            <label className="form-label fw-semibold">Reason for Leave *</label>
+            <textarea
+              className="form-control"
+              rows="3"
+              placeholder="Enter reason for leave"
+              value={newLeaveApplication.reasonForLeave}
+              onChange={(e) => setNewLeaveApplication({ ...newLeaveApplication, reasonForLeave: e.target.value })}
+            ></textarea>
+          </div>
         </div>
-      )}
+        <div className="modal-footer">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => {
+              setShowApplyForm(false);
+              setDayWiseSelection({});
+              setAllDates([]);
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleApplyLeave}
+            disabled={!newLeaveApplication.leaveApplyType || !newLeaveApplication.leaveFromDate || !newLeaveApplication.leaveToDate || Object.keys(dayWiseSelection).length === 0 || !newLeaveApplication.reasonForLeave?.trim()}
+          >
+            <i className="bi bi-check-circle me-2"></i>
+            Apply for Leave ({calculateTotalDays(dayWiseSelection)} days)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Leave Policy Modal */}
 {showLeavePolicy && (

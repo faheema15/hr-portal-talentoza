@@ -18,6 +18,13 @@ router.post('/records/bulk', attendanceController.createBulkAttendanceRecords);
 // Single record operations
 router.post('/records', attendanceController.createAttendanceRecord);
 
+// ==================== HOLIDAYS ROUTES ====================
+router.get('/holidays', attendanceController.getGovernmentHolidays);
+
+// ==================== INITIALIZATION ROUTES ====================
+router.post('/initialize/all', attendanceController.initializeMonthlyAttendance);
+router.post('/initialize/:id', attendanceController.initializeEmployeeAttendance);
+
 // ==================== DYNAMIC ID ROUTES (MUST BE LAST) ====================
 // Mark today's attendance
 router.post('/:id/mark-today', attendanceController.markTodayAttendance);

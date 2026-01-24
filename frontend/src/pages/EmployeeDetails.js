@@ -87,7 +87,7 @@ function EmployeeDetails() {
 
   const [originalData, setOriginalData] = useState(formData);
   const [hasChanges, setHasChanges] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState("https://via.placeholder.com/150/cccccc/666666?text=Upload+Photo");
+  const [photoPreview, setPhotoPreview] = useState("/default_profile.jpg");
   const [loading, setLoading] = useState(!isNewEmployee);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
@@ -180,7 +180,7 @@ function EmployeeDetails() {
         setPhotoPreview(`${API_BASE_URL}/${cleanPath}`);
       }
     } else {
-      setPhotoPreview("https://via.placeholder.com/150/0066cc/ffffff?text=Employee");
+      setPhotoPreview("/default_profile.jpg");
     }
     // ============================================
     

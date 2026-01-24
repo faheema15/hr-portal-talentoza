@@ -8,7 +8,7 @@ function BankDetails() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isNewEntry = id === "new";
-  const INITIAL_PHOTO = "https://via.placeholder.com/150/cccccc/666666?text=Upload+Photo";
+  const INITIAL_PHOTO = "/default_profile.jpg";
 
   const [formData, setFormData] = useState({
     photo: INITIAL_PHOTO,
@@ -58,6 +58,14 @@ function BankDetails() {
     }
   };
 
+  const handleViewDocument = (url) => {
+    if (url) {
+      // Handle both relative and absolute URLs
+      const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}/${url.startsWith('/') ? url.substring(1) : url}`;
+      window.open(fullUrl, '_blank');
+    }
+  };
+
   useEffect(() => {
     setHasChanges(JSON.stringify(formData) !== JSON.stringify(originalData));
   }, [formData, originalData]);
@@ -97,7 +105,7 @@ function BankDetails() {
         const transformedData = {
           photo: bankInfo.photo 
             ? (bankInfo.photo.startsWith('http') ? bankInfo.photo : `${API_BASE_URL}${bankInfo.photo}`)
-            : INITIAL_PHOTO,
+            : "/default_profile.jpg",
           empId: bankInfo.empId || "",
           empName: bankInfo.empName || "",
           dob: formatDateForInput(bankInfo.dob) || "",
@@ -123,7 +131,10 @@ function BankDetails() {
           bankName: bankInfo.bankName || "",
           branchAddress: bankInfo.branchAddress || "",
           bankAccountNumber: bankInfo.bankAccountNumber || "",
-          ifscCode: bankInfo.ifscCode || ""
+          ifscCode: bankInfo.ifscCode || "",
+          panCard: bankInfo.panCard || "",              // ADD THIS
+          cancelledCheque: bankInfo.cancelledCheque || "", // ADD THIS
+          bankPassbook: bankInfo.bankPassbook || ""  
         };
         
         setFormData(transformedData);
@@ -527,6 +538,189 @@ function BankDetails() {
                     placeholder="Enter IFSC Code"
                     disabled={!isHR}
                   />
+                </div>
+              </div>
+
+              {/* BANK DOCUMENTS SECTION - ADD THIS ENTIRE SECTION */}
+              <div className="row g-3 mb-4">
+                <div className="col-12 mt-4">
+                  <h5 className="fw-bold text-primary mb-3">📄 Bank Documents</h5>
+                  {isHR ? (
+                    <small className="text-success">
+                      <i className="bi bi-pencil me-1"></i>
+                      You can upload these documents
+                    </small>
+                  ) : (
+                    <small className="text-muted">View only</small>
+                  )}
+                </div>
+                
+                {/* PAN Card */}
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold">PAN Card</label>
+                  <input 
+                    type="file"
+                    className="form-control"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        if (file.size > 5 * 1024 * 1024) {
+                          alert('File size must be less than 5MB');
+                          return;
+                        }
+                        
+                        try {
+                          const uploadFormData = new FormData();
+                          uploadFormData.append('file', file);
+                          uploadFormData.append('fieldName', 'pan_card');
+
+                          const token = sessionStorage.getItem('token');
+                          const response = await fetch(`${API_BASE_URL}/api/upload/document`, {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${token}`
+                            },
+                            body: uploadFormData
+                          });
+
+                          if (response.ok) {
+                            const result = await response.json();
+                            setFormData(prev => ({ ...prev, panCard: result.data.file_url }));
+                          } else {
+                            const errorData = await response.json();
+                            alert(`Error uploading file: ${errorData.message}`);
+                          }
+                        } catch (error) {
+                          console.error('Error uploading file:', error);
+                          alert('Error uploading file. Please try again.');
+                        }
+                      }
+                    }}
+                    disabled={!isHR}
+                  />
+                  <small className="text-muted">Upload PDF or Image (Max 5MB)</small>
+                  {formData.panCard && (
+                    <button 
+                      type="button"
+                      className="btn btn-sm btn-outline-primary mt-2"
+                      onClick={() => handleViewDocument(formData.panCard)}
+                    >
+                      <i className="bi bi-eye me-1"></i> View PAN Card
+                    </button>
+                  )}
+                </div>
+                
+                {/* Cancelled Cheque */}
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold">Cancelled Cheque</label>
+                  <input 
+                    type="file"
+                    className="form-control"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        if (file.size > 5 * 1024 * 1024) {
+                          alert('File size must be less than 5MB');
+                          return;
+                        }
+                        
+                        try {
+                          const uploadFormData = new FormData();
+                          uploadFormData.append('file', file);
+                          uploadFormData.append('fieldName', 'cancelled_cheque');
+
+                          const token = sessionStorage.getItem('token');
+                          const response = await fetch(`${API_BASE_URL}/api/upload/document`, {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${token}`
+                            },
+                            body: uploadFormData
+                          });
+
+                          if (response.ok) {
+                            const result = await response.json();
+                            setFormData(prev => ({ ...prev, cancelledCheque: result.data.file_url }));
+                          } else {
+                            const errorData = await response.json();
+                            alert(`Error uploading file: ${errorData.message}`);
+                          }
+                        } catch (error) {
+                          console.error('Error uploading file:', error);
+                          alert('Error uploading file. Please try again.');
+                        }
+                      }
+                    }}
+                    disabled={!isHR}
+                  />
+                  <small className="text-muted">Upload PDF or Image (Max 5MB)</small>
+                  {formData.cancelledCheque && (
+                    <button 
+                      type="button"
+                      className="btn btn-sm btn-outline-primary mt-2"
+                      onClick={() => handleViewDocument(formData.cancelledCheque)}
+                    >
+                      <i className="bi bi-eye me-1"></i> View Cancelled Cheque
+                    </button>
+                  )}
+                </div>
+                
+                {/* Bank Passbook */}
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold">Bank Passbook</label>
+                  <input 
+                    type="file"
+                    className="form-control"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        if (file.size > 5 * 1024 * 1024) {
+                          alert('File size must be less than 5MB');
+                          return;
+                        }
+                        
+                        try {
+                          const uploadFormData = new FormData();
+                          uploadFormData.append('file', file);
+                          uploadFormData.append('fieldName', 'bank_passbook');
+
+                          const token = sessionStorage.getItem('token');
+                          const response = await fetch(`${API_BASE_URL}/api/upload/document`, {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${token}`
+                            },
+                            body: uploadFormData
+                          });
+
+                          if (response.ok) {
+                            const result = await response.json();
+                            setFormData(prev => ({ ...prev, bankPassbook: result.data.file_url }));
+                          } else {
+                            const errorData = await response.json();
+                            alert(`Error uploading file: ${errorData.message}`);
+                          }
+                        } catch (error) {
+                          console.error('Error uploading file:', error);
+                          alert('Error uploading file. Please try again.');
+                        }
+                      }
+                    }}
+                    disabled={!isHR}
+                  />
+                  <small className="text-muted">Upload PDF or Image (Max 5MB)</small>
+                  {formData.bankPassbook && (
+                    <button 
+                      type="button"
+                      className="btn btn-sm btn-outline-primary mt-2"
+                      onClick={() => handleViewDocument(formData.bankPassbook)}
+                    >
+                      <i className="bi bi-eye me-1"></i> View Bank Passbook
+                    </button>
+                  )}
                 </div>
               </div>
 

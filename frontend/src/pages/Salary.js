@@ -8,7 +8,7 @@ function Salary() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isNewEntry = id === "new";
-  const INITIAL_PHOTO = "https://via.placeholder.com/150/cccccc/666666?text=Upload+Photo";
+  const INITIAL_PHOTO = "/default_profile.jpg";
 
   const [formData, setFormData] = useState({
     photo: INITIAL_PHOTO,
@@ -101,7 +101,7 @@ function Salary() {
         const transformedData = {
           photo: salaryInfo.photo 
           ? (salaryInfo.photo.startsWith('http') ? salaryInfo.photo : `${API_BASE_URL}${salaryInfo.photo}`)
-          : INITIAL_PHOTO,
+          : "/default_profile.jpg",
           empId: salaryInfo.empId || "",
           empName: salaryInfo.empName || "",
           designation: salaryInfo.designation || "",

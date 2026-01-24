@@ -1,12 +1,23 @@
-// pages/Dashboard.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCurrentUser, logout } from "../utils/authUtils";
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 function Dashboard() {
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [changePasswordData, setChangePasswordData] = useState({
+    oldPassword: "",
+    newPassword: "",
+    confirmPassword: ""
+  });
+  const [changePasswordError, setChangePasswordError] = useState("");
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
+  const [changePasswordSuccess, setChangePasswordSuccess] = useState(false);
 
   const allMenuItems = [ 
     { id: 1, title: "Employee Details", icon: "🧑‍💼", path: "/employee-details", color: "#4F46E5", useEmployeeList: true }, 
@@ -23,8 +34,7 @@ function Dashboard() {
     { id: 12, title: "Offer Letter", icon: "📄", path: "/offer-letter", color: "#8B5CF6", allowedRoles: ['HR', 'skip_level_manager'], useEmployeeList: false }
   ];
 
-  // Filter menu items based on user role
-   const menuItems = allMenuItems.filter(item => {
+  const menuItems = allMenuItems.filter(item => {
     const userRole = currentUser?.role;
     if (item.allowedRoles && !item.allowedRoles.includes(userRole)) {
       return false;
@@ -45,8 +55,11 @@ function Dashboard() {
     }
   };
 
+  // ==================== LOGOUT HANDLERS ====================
+
   const handleLogoutClick = () => {
     setShowLogoutModal(true);
+    setShowDropdown(false);
   };
 
   const handleLogoutConfirm = () => {
@@ -59,6 +72,92 @@ function Dashboard() {
     setShowLogoutModal(false);
   };
 
+  // ==================== CHANGE PASSWORD HANDLERS ====================
+
+  const handleChangePasswordClick = () => {
+    setShowChangePasswordModal(true);
+    setShowDropdown(false);
+    setChangePasswordError("");
+    setChangePasswordSuccess(false);
+    setChangePasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" });
+  };
+
+  const handleChangePasswordClose = () => {
+    setShowChangePasswordModal(false);
+    setChangePasswordError("");
+    setChangePasswordSuccess(false);
+    setChangePasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" });
+  };
+
+  const handleChangePasswordDataChange = (e) => {
+    setChangePasswordData({
+      ...changePasswordData,
+      [e.target.name]: e.target.value
+    });
+    setChangePasswordError("");
+  };
+
+  const handleChangePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setChangePasswordLoading(true);
+    setChangePasswordError("");
+    setChangePasswordSuccess(false);
+
+    try {
+      if (!changePasswordData.oldPassword || !changePasswordData.newPassword || !changePasswordData.confirmPassword) {
+        setChangePasswordError("All fields are required");
+        setChangePasswordLoading(false);
+        return;
+      }
+
+      if (changePasswordData.newPassword !== changePasswordData.confirmPassword) {
+        setChangePasswordError("New passwords do not match");
+        setChangePasswordLoading(false);
+        return;
+      }
+
+      if (changePasswordData.newPassword.length < 6) {
+        setChangePasswordError("Password must be at least 6 characters long");
+        setChangePasswordLoading(false);
+        return;
+      }
+
+      const token = sessionStorage.getItem("token");
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          oldPassword: changePasswordData.oldPassword,
+          newPassword: changePasswordData.newPassword,
+          confirmPassword: changePasswordData.confirmPassword
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setChangePasswordSuccess(true);
+        setChangePasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" });
+        
+        setTimeout(() => {
+          setShowChangePasswordModal(false);
+          setChangePasswordSuccess(false);
+        }, 2000);
+      } else {
+        setChangePasswordError(data.message || "Failed to change password");
+      }
+    } catch (err) {
+      setChangePasswordError("Server error. Please try again later.");
+      console.error('Change password error:', err);
+    } finally {
+      setChangePasswordLoading(false);
+    }
+  };
+
   return (
     <div className="min-vh-100 bg-light">
       <nav className="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
@@ -66,14 +165,49 @@ function Dashboard() {
           <span className="navbar-brand mb-0 h1 fw-bold">
             <span className="text-primary">HR</span> Portal
           </span>
-          <div className="d-flex align-items-center gap-3">
+          <div className="d-flex align-items-center gap-3 position-relative">
             <span className="text-white d-none d-md-block">
               Welcome, {currentUser?.full_name || "User"}
             </span>
             <span className="badge bg-primary">{currentUser?.role?.toUpperCase()}</span>
-            <button className="btn btn-outline-light btn-sm" onClick={handleLogoutClick}>
-              Logout
-            </button>
+            
+            {/* Dropdown Button */}
+            <div className="position-relative">
+              <button 
+                className="btn btn-outline-light btn-sm"
+                onClick={() => setShowDropdown(!showDropdown)}
+              >
+                ⋮ 
+              </button>
+
+              {/* Dropdown Menu */}
+              {showDropdown && (
+                <div 
+                  className="position-absolute end-0 mt-2 bg-white rounded shadow-lg"
+                  style={{ 
+                    minWidth: "180px", 
+                    zIndex: 1000,
+                    top: "100%"
+                  }}
+                >
+                  <button
+                    className="btn btn-link w-100 text-start text-dark text-decoration-none py-2 px-3"
+                    onClick={handleChangePasswordClick}
+                    style={{ fontSize: "14px" }}
+                  >
+                    🔐 Change Password
+                  </button>
+                  <hr className="my-1" />
+                  <button
+                    className="btn btn-link w-100 text-start text-danger text-decoration-none py-2 px-3"
+                    onClick={handleLogoutClick}
+                    style={{ fontSize: "14px" }}
+                  >
+                    🚪 Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </nav>
@@ -133,6 +267,7 @@ function Dashboard() {
         </div>
       </div>
 
+      {/* ==================== LOGOUT MODAL ==================== */}
       {showLogoutModal && (
         <>
           <div 
@@ -192,26 +327,154 @@ function Dashboard() {
               </div>
             </div>
           </div>
-
-          <style>{`
-            @keyframes fadeIn {
-              from { opacity: 0; }
-              to { opacity: 0.5; }
-            }
-            
-            @keyframes slideDown {
-              from {
-                opacity: 0;
-                transform: translate(-50%, -60%);
-              }
-              to {
-                opacity: 1;
-                transform: translate(-50%, -50%);
-              }
-            }
-          `}</style>
         </>
       )}
+
+      {/* ==================== CHANGE PASSWORD MODAL ==================== */}
+      {showChangePasswordModal && (
+        <>
+          <div 
+            className="position-fixed top-0 start-0 w-100 h-100 bg-dark"
+            style={{ 
+              zIndex: 1040, 
+              opacity: 0.5,
+              animation: "fadeIn 0.2s ease-in"
+            }}
+            onClick={handleChangePasswordClose}
+          />
+          
+          <div 
+            className="position-fixed top-50 start-50 translate-middle"
+            style={{ 
+              zIndex: 1050,
+              width: "90%",
+              maxWidth: "500px",
+              animation: "slideDown 0.3s ease-out"
+            }}
+          >
+            <div className="card border-0 shadow-lg">
+              <div className="card-body p-4">
+                <div className="text-center mb-3">
+                  <div 
+                    className="rounded-circle d-inline-flex align-items-center justify-content-center"
+                    style={{
+                      width: "60px",
+                      height: "60px",
+                      backgroundColor: "#E7F3FF",
+                      fontSize: "1.75rem"
+                    }}
+                  >
+                    🔐
+                  </div>
+                </div>
+
+                <h5 className="text-center fw-bold mb-2">Change Password</h5>
+                <p className="text-center text-muted mb-4 small">
+                  Enter your current password and set a new one
+                </p>
+
+                {changePasswordError && (
+                  <div className="alert alert-danger small mb-3" role="alert">
+                    {changePasswordError}
+                  </div>
+                )}
+
+                {changePasswordSuccess && (
+                  <div className="alert alert-success small mb-3" role="alert">
+                    ✅ Password changed successfully!
+                  </div>
+                )}
+
+                {!changePasswordSuccess && (
+                  <form onSubmit={handleChangePasswordSubmit}>
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold small">Old Password</label>
+                      <input
+                        type="password"
+                        className="form-control"
+                        name="oldPassword"
+                        value={changePasswordData.oldPassword}
+                        onChange={handleChangePasswordDataChange}
+                        placeholder="Enter your current password"
+                        required
+                      />
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold small">New Password</label>
+                      <input
+                        type="password"
+                        className="form-control"
+                        name="newPassword"
+                        value={changePasswordData.newPassword}
+                        onChange={handleChangePasswordDataChange}
+                        placeholder="Enter new password"
+                        required
+                      />
+                      <small className="text-muted">At least 6 characters</small>
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="form-label fw-semibold small">Re-enter New Password</label>
+                      <input
+                        type="password"
+                        className="form-control"
+                        name="confirmPassword"
+                        value={changePasswordData.confirmPassword}
+                        onChange={handleChangePasswordDataChange}
+                        placeholder="Confirm new password"
+                        required
+                      />
+                    </div>
+
+                    <div className="d-flex gap-2">
+                      <button 
+                        type="button"
+                        className="btn btn-outline-secondary flex-fill py-2"
+                        onClick={handleChangePasswordClose}
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit"
+                        className="btn btn-primary flex-fill py-2"
+                        disabled={changePasswordLoading}
+                      >
+                        {changePasswordLoading ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            Updating...
+                          </>
+                        ) : (
+                          "Change Password"
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 0.5; }
+        }
+        
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translate(-50%, -60%);
+          }
+          to {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+          }
+        }
+      `}</style>
     </div>
   );
 }
