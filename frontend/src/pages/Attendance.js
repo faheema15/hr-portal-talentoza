@@ -68,14 +68,13 @@ function Attendance() {
   fetchHolidays();
 }, [currentYear]);
 
-// REPLACE THIS ENTIRE useEffect SECTION in your Attendance component
-// This is the section that handles data fetching
-
-// Fetch attendance data for a specific month (WITHOUT dependency on currentMonth/Year)
+// Fetch attendance data for a specific month
 const fetchAttendanceForMonth = useCallback((month, year) => {
   const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
   const lastDay = new Date(year, month + 1, 0).getDate();
   const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${lastDay}`;
+
+  console.log(`🔍 Fetching attendance for emp ${id}: ${startDate} to ${endDate}`);
 
   const token = sessionStorage.getItem('token');
   
@@ -84,16 +83,29 @@ const fetchAttendanceForMonth = useCallback((month, year) => {
   })
     .then(res => res.json())
     .then(data => {
-      if (data.success) {
+      console.log('📅 Attendance response:', data);
+      
+      if (data.success && data.data) {
         const attendanceMap = {};
         data.data.forEach(record => {
-          attendanceMap[record.attendance_date] = record.status;
+          const dateStr = record.attendance_date.split('T')[0];
+          console.log(`Date: ${dateStr}, Status: ${record.status}`);
+          attendanceMap[dateStr] = record.status;
         });
+        
+        console.log('✅ Attendance map created:', attendanceMap);
         setAttendanceData(attendanceMap);
+      } else {
+        console.error('❌ No attendance data in response');
+        setAttendanceData({});
       }
     })
-    .catch(err => console.error("Error fetching attendance records:", err));
-}, [id]); 
+    .catch(err => {
+      console.error("❌ Error fetching attendance records:", err);
+      setAttendanceData({});
+    });
+}, [id]);
+
 
 // ONLY fetch employee data on initial load (ONCE)
 useEffect(() => {

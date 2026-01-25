@@ -444,10 +444,8 @@ function EmployeeDetails() {
 
     if (response.ok) {
       const result = await response.json();
-      console.log('✅ Upload response:', result);
       
       const uploadedPhotoUrl = result.data.photo_url;
-      console.log('📸 Photo URL from server:', uploadedPhotoUrl);
       
       // Update form data with the photo URL
       setFormData(prev => ({ ...prev, photo_url: uploadedPhotoUrl }));

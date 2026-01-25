@@ -476,41 +476,72 @@ exports.initializeMonthlyAttendance = async (req, res) => {
 
 // Initialize attendance for a specific employee for current month
 exports.initializeEmployeeAttendance = async (req, res) => {
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+    
     const { id } = req.params;
     
-    // Get current month start and end dates
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-    
-    const endOfMonth = new Date(startOfMonth);
-    endOfMonth.setMonth(endOfMonth.getMonth() + 1);
-    endOfMonth.setDate(0);
+    // **FIX: Get the actual current date (not one month off)**
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     
     const startDate = startOfMonth.toISOString().split('T')[0];
     const endDate = endOfMonth.toISOString().split('T')[0];
     
-    // USE THE SERVICE - directly call the service method
-    const recordsCreated = await AttendanceService.initializeAttendanceForRange(
-      id, 
-      startDate, 
-      endDate
-    );
+    console.log(`Initializing attendance for emp ${id}: ${startDate} to ${endDate}`);
+    
+    // Get holidays
+    const year = startOfMonth.getFullYear();
+    const holidays = await AttendanceService.getGovernmentHolidays(year);
+    
+    console.log(`Found ${holidays.length} holidays for ${year}:`, holidays);
+    
+    // Use UPSERT to update existing records
+    const query = `
+      INSERT INTO attendance_records (emp_id, attendance_date, status)
+      SELECT $1, date_series, 
+        CASE 
+          WHEN EXTRACT(DOW FROM date_series) = 0 THEN 'leave'  -- Sunday
+          WHEN date_series = ANY($2::date[]) THEN 'leave'      -- Government holiday
+          ELSE 'present'
+        END as status
+      FROM generate_series($3::date, $4::date, '1 day'::interval) AS date_series
+      ON CONFLICT (emp_id, attendance_date) 
+      DO UPDATE SET 
+        status = CASE 
+          WHEN EXTRACT(DOW FROM attendance_records.attendance_date) = 0 THEN 'leave'
+          WHEN attendance_records.attendance_date = ANY($2::date[]) THEN 'leave'
+          ELSE 'present'
+        END,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `;
+    
+    const result = await client.query(query, [id, holidays, startDate, endDate]);
+    
+    console.log(`Created/updated ${result.rowCount} attendance records`);
+    
+    await client.query('COMMIT');
     
     res.status(200).json({
       success: true,
       message: `Initialized attendance for employee ${id}`,
-      recordsCreated: recordsCreated,
-      dateRange: { startDate, endDate }
+      recordsCreated: result.rowCount,
+      dateRange: { startDate, endDate },
+      holidays: holidays
     });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error initializing employee attendance:', error);
     res.status(500).json({
       success: false,
       message: 'Error initializing employee attendance',
       error: error.message
     });
+  } finally {
+    client.release();
   }
 };
 

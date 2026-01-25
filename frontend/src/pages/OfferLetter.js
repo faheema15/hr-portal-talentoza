@@ -229,7 +229,6 @@ function OfferLetter() {
 
       if (saveResponse.ok && saveData.success) {
         setOfferId(saveData.offerId);
-        console.log('✅ Offer letter saved with ID:', saveData.offerId);
       } else {
         throw new Error(saveData.error || 'Failed to save offer letter');
       }
@@ -384,7 +383,6 @@ function OfferLetter() {
           fetchOfferLetters();
         }, 1000);
         
-        console.log('✅ Email sent:', data);
       } else {
         throw new Error(data.error || 'Failed to send offer letter');
       }

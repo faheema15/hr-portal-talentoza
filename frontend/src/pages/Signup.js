@@ -128,7 +128,6 @@ function Signup() {
       });
 
       const data = await response.json();
-      console.log('Signup response:', data);
 
       if (response.ok && data.success) {
         set_success("Account created successfully! Redirecting to login...");

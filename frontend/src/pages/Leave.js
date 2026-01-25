@@ -205,16 +205,13 @@ const formatDateDisplay = (dateStr) => {
       setError(null);
 
       // Fetch leave history
-      console.log('Fetching leave history for:', empIdToFetch);
       const leaveListResponse = await fetch(`${API_BASE_URL}/api/leave/leave-list/${empIdToFetch}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      console.log('Leave list response status:', leaveListResponse.status);
       
       if (leaveListResponse.ok) {
         const leaveListData = await leaveListResponse.json();
-        console.log('Leave history data:', leaveListData);
         setLeaveHistory(leaveListData.data || []);
       } else {
         console.error('Failed to fetch leave history:', leaveListResponse.status);

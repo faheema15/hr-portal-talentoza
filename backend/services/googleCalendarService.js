@@ -4,15 +4,15 @@ const fs = require('fs');
 const path = require('path');
 
 // TEMPORARY: Using hardcoded holidays until google creds
-
 class GoogleCalendarService {
-  static instance = null;
-  static cache = {};
+  constructor() {
+    this.cache = {};
+  }
 
   /**
    * TEMPORARY: Initialize (does nothing, no credentials needed)
    */
-  static async initialize() {
+  async initialize() {
     console.log('⚠ Using TEMPORARY hardcoded holidays (Google Calendar not configured)');
     console.log('  To enable Google Calendar: Set up credentials and update this file');
     return true;
@@ -21,7 +21,7 @@ class GoogleCalendarService {
   /**
    * TEMPORARY: Return hardcoded Indian holidays
    */
-  static async getHolidaysWithCache(year) {
+  async getHolidaysWithCache(year) {
     console.log(`Using temporary hardcoded holidays for ${year}`);
     
     // Hardcoded Indian holidays for 2024-2026
@@ -88,7 +88,7 @@ class GoogleCalendarService {
   /**
    * TEMPORARY: Clear cache
    */
-  static clearCache(year = null) {
+  clearCache(year = null) {
     console.log('Cache cleared (not needed for hardcoded holidays)');
   }
 }
