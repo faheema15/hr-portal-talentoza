@@ -16,3 +16,5 @@ default: admin@hrportal.com, admin@123 (local)
 todo:
 temporary comment out once gcs done
 google calender, gcs integration
+
+how i want is in attendance from doj all days except sundays holidays should me marked green (not future dates) wverydat it should be green ubutyes hr being to click and update to mark leave or change leave to present should be possible 
