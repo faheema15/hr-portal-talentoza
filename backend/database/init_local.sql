@@ -512,7 +512,7 @@ EXECUTE FUNCTION initialize_employee_attendance();
 -- DEFAULT ADMIN USER
 -- ======================================================
 INSERT INTO users (name, email, password, role, is_active)
-VALUES ('Admin User', 'admin@hrportal.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.', 'HR', true);
+VALUES ('Admin User', 'admin@hrportal.com', '$2b$10$7E5jy8NVEzZu9/c0B3sttePfxVZOJwRWrO7ka3.WL0FFWgI3llkyO', 'HR', true);
 
 
 -- ======================================================

@@ -183,6 +183,8 @@ exports.login = async (req, res) => {
     
     // Verify password
     console.log('🔐 Comparing passwords...');
+    console.log('Plain password entered:', password);          // ADD THIS
+    console.log('Hash stored in DB:', user.password); 
     
     const is_valid = await bcrypt.compare(password, user.password);
     
