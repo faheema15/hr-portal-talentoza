@@ -20,6 +20,8 @@ function Signup() {
   const [error, set_error] = useState("");
   const [success, set_success] = useState("");
   const [loading, set_loading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handle_change = (e) => {
     const { name, value } = e.target;
@@ -246,33 +248,75 @@ function Signup() {
                     <label className="form-label fw-semibold">
                       Password <span className="text-danger">*</span>
                     </label>
-                    <input
-                      type="password"
-                      className="form-control"
-                      name="password"
-                      value={form_data.password}
-                      onChange={handle_change}
-                      placeholder="Create a password"
-                      required
-                    />
-                    <small className="text-muted">
-                      Must be at least 6 characters with letters and numbers
-                    </small>
+                    <div className="input-group">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        className="form-control"
+                        name="password"
+                        value={form_data.password}
+                        onChange={handle_change}
+                        placeholder="Create a password"
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="btn border-start-0"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{ 
+                          borderColor: '#dee2e6', 
+                          background: 'white',
+                          color: '#6c757d'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = 'white';
+                          e.currentTarget.style.color = '#0d6efd';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'white';
+                          e.currentTarget.style.color = '#6c757d';
+                        }}
+                      >
+                        <i className={showPassword ? "bi bi-eye-slash" : "bi bi-eye"}></i>
+                      </button>
+                    </div>
+                    <small className="text-muted">Must be at least 6 characters with letters and numbers</small>
                   </div>
 
                   <div className="mb-4">
                     <label className="form-label fw-semibold">
                       Confirm Password <span className="text-danger">*</span>
                     </label>
-                    <input
-                      type="password"
-                      className="form-control"
-                      name="confirm_password"
-                      value={form_data.confirm_password}
-                      onChange={handle_change}
-                      placeholder="Confirm your password"
-                      required
-                    />
+                    <div className="input-group">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        className="form-control"
+                        name="confirm_password"
+                        value={form_data.confirm_password}
+                        onChange={handle_change}
+                        placeholder="Confirm your password"
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="btn border-start-0"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{ 
+                          borderColor: '#dee2e6', 
+                          background: 'white',
+                          color: '#6c757d'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = 'white';
+                          e.currentTarget.style.color = '#0d6efd';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'white';
+                          e.currentTarget.style.color = '#6c757d';
+                        }}
+                      >
+                        <i className={showConfirmPassword ? "bi bi-eye-slash" : "bi bi-eye"}></i>
+                      </button>
+                    </div>
                   </div>
 
                   <button

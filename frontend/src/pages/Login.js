@@ -28,6 +28,7 @@ function Login() {
   });
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -246,17 +247,38 @@ function Login() {
 
                   <div className="mb-3">
                     <label className="form-label fw-semibold">Password</label>
-                    <input
-                      type="password"
-                      className="form-control"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      placeholder="Enter your password"
-                      required
-                    />
+                    <div className="input-group">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        className="form-control"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        placeholder="Enter your password"
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="btn border-start-0"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{ 
+                          borderColor: '#dee2e6', 
+                          background: 'white',
+                          color: '#6c757d'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = 'white';
+                          e.currentTarget.style.color = '#0d6efd';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'white';
+                          e.currentTarget.style.color = '#6c757d';
+                        }}
+                      >
+                        <i className={showPassword ? "bi bi-eye-slash" : "bi bi-eye"}></i>
+                      </button>
+                    </div>
                   </div>
-
                   <button
                     type="submit"
                     className="btn btn-primary w-100 py-2 fw-semibold"
