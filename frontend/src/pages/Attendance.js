@@ -203,19 +203,22 @@ useEffect(() => {
         return;
       }
 
-      const empUrl = isNewEntry 
-        ? `${API_BASE_URL}/api/attendance`
-        : `${API_BASE_URL}/api/attendance/${id}`;
-      
-      const empMethod = isNewEntry ? 'POST' : 'PUT';
+      // Send only editable profile fields
+      const profileData = {
+        photo: formData.photo,
+        shiftTimings: formData.shiftTimings,
+        regularisationDays: formData.regularisationDays
+      };
+
+      const empUrl = `${API_BASE_URL}/api/attendance/${id}`;
       
       const empResponse = await fetch(empUrl, {
-        method: empMethod,
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(profileData),
       });
 
       const empResult = await empResponse.json();
@@ -338,9 +341,11 @@ const handleDateClick = (day) => {
     return;
   }
 
-  // Cycle through: present -> absent -> present
+  // Cycle: present → half_day → absent → present
   let newStatus;
-  if (currentStatus === "present") {
+  if (currentStatus === "present" || !currentStatus) {
+    newStatus = "half_day";
+  } else if (currentStatus === "half_day") {
     newStatus = "absent";
   } else {
     newStatus = "present";
@@ -352,6 +357,7 @@ const handleDateClick = (day) => {
   }));
   setHasChanges(true);
 };
+
 
 const getDateStatus = (day) => {
   const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
