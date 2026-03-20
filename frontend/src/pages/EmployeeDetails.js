@@ -649,7 +649,9 @@ const handlePhotoUpdate = async (photoUrl) => {
     }
 
     try {
-      const payload = { ...newCertification, emp_id: formData.emp_id };
+      const payload = { ...newCertification, emp_id: formData.emp_id,valid_till: newCertification.has_expiry && newCertification.valid_till
+    ? newCertification.valid_till
+    : null};
       const response = await fetch(`${API_BASE_URL}/api/certifications/`, {
         method: 'POST',
         headers: {
@@ -667,7 +669,7 @@ const handlePhotoUpdate = async (photoUrl) => {
           registration_no: '',
           year_of_passing: '',
           has_expiry: false,
-          valid_till: '',
+          valid_till: null,
           certificate: ''
         });
         setShowCertificationForm(false);
@@ -1627,7 +1629,7 @@ const handlePhotoUpdate = async (photoUrl) => {
                             <h6 className="mb-0">Add Educational Detail</h6>
                           </div>
                           <div className="card-body">
-                            <form onSubmit={handleAddEducation}>
+                            <div>
                               <div className="row g-3">
                                 <div className="col-md-6">
                                   <label className="form-label fw-semibold">Level <span className="text-danger">*</span></label>
@@ -1716,15 +1718,16 @@ const handlePhotoUpdate = async (photoUrl) => {
                                     Cancel
                                   </button>
                                   <button 
-                                    type="submit" 
-                                    className="btn btn-primary"
-                                    disabled={uploadingFile}
-                                  >
-                                    Save Education
-                                  </button>
+  type="button"   // ✅ IMPORTANT
+  className="btn btn-primary"
+  disabled={uploadingFile}
+  onClick={handleAddEducation}   // ✅ ADD THIS
+>
+  Save Education
+</button>
                                 </div>
                               </div>
-                            </form>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1816,7 +1819,7 @@ const handlePhotoUpdate = async (photoUrl) => {
                             <h6 className="mb-0">Add Certification</h6>
                           </div>
                           <div className="card-body">
-                            <form onSubmit={handleAddCertification}>
+                            <div>
                               <div className="row g-3">
                                 <div className="col-md-6">
                                   <label className="form-label fw-semibold">Exam Body <span className="text-danger">*</span></label>
@@ -1870,7 +1873,6 @@ const handlePhotoUpdate = async (photoUrl) => {
                                       className="form-control"
                                       value={newCertification.valid_till}
                                       onChange={(e) => setNewCertification({...newCertification, valid_till: e.target.value})}
-                                      required={newCertification.has_expiry}
                                     />
                                   </div>
                                 )}
@@ -1915,15 +1917,16 @@ const handlePhotoUpdate = async (photoUrl) => {
                                     Cancel
                                   </button>
                                   <button 
-                                    type="submit" 
+                                    type="button" 
                                     className="btn btn-primary"
                                     disabled={uploadingFile}
+                                    onClick={handleAddCertification}
                                   >
                                     Save Certification
                                   </button>
                                 </div>
                               </div>
-                            </form>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1999,7 +2002,7 @@ const handlePhotoUpdate = async (photoUrl) => {
                             <h6 className="mb-0">Add Research Paper</h6>
                           </div>
                           <div className="card-body">
-                            <form onSubmit={handleAddResearchPaper}>
+                            <div>
                               <div className="row g-3">
                                 <div className="col-md-12">
                                   <label className="form-label fw-semibold">Title <span className="text-danger">*</span></label>
@@ -2060,14 +2063,15 @@ const handlePhotoUpdate = async (photoUrl) => {
                                     Cancel
                                   </button>
                                   <button 
-                                    type="submit" 
+                                    type="button" 
                                     className="btn btn-primary"
+                                    onClick={handleAddResearchPaper}
                                   >
                                     Save Research Paper
                                   </button>
                                 </div>
                               </div>
-                            </form>
+                            </div>
                           </div>
                         </div>
                       </div>

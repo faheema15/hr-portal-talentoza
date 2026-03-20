@@ -108,6 +108,7 @@ const fetchAttendanceForMonth = useCallback((month, year) => {
 
 
 // ONLY fetch employee data on initial load (ONCE)
+// eslint-disable-next-line react-hooks/exhaustive-deps
 useEffect(() => {
   const fetchData = async () => {
     const empIdToFetch = id !== "new" ? id : currentUser?.emp_id;
@@ -205,10 +206,11 @@ useEffect(() => {
 
       const empUrl = isNewEntry 
         ? `${API_BASE_URL}/api/attendance`
-        : `${API_BASE_URL}/api/attendance/${id}`;
+        : `${API_BASE_URL}/api/attendance/${formData.empId}`;
       
       const empMethod = isNewEntry ? 'POST' : 'PUT';
-      
+      console.log("Updating empId:", formData.empId);
+console.log("URL:", empUrl);
       const empResponse = await fetch(empUrl, {
         method: empMethod,
         headers: {
