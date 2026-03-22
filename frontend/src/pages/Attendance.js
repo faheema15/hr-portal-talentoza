@@ -217,7 +217,7 @@ console.log("URL:", empUrl);
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(profileData),
+        body: JSON.stringify(formData),
       });
 
       const empResult = await empResponse.json();

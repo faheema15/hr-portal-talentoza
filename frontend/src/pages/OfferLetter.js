@@ -698,138 +698,188 @@ function OfferLetter() {
               )}
 
               {/* HISTORY TAB */}
-              {activeTab === 'history' && (
-                <div className="card border-0 shadow">
-                  <div className="card-header bg-light p-3">
-                    <div className="d-flex justify-content-between align-items-center">
-                      <h5 className="mb-0">📋 Offer Letter Records</h5>
-                      <button 
-                        className="btn btn-sm btn-primary"
-                        onClick={fetchOfferLetters}
-                        disabled={tableLoading}
-                      >
-                        {tableLoading ? '⏳ Loading...' : '🔄 Refresh'}
-                      </button>
-                    </div>
-                  </div>
+              {/* HISTORY TAB */}
+{activeTab === 'history' && (
+  <div className="card border-0 shadow-sm">
+    <div className="card-header bg-white border-bottom px-4 py-3">
+      <div className="d-flex justify-content-between align-items-center">
+        <h6 className="mb-0 fw-bold text-dark">Offer Letter Records</h6>
+        <button
+          className="btn btn-sm btn-outline-primary"
+          onClick={fetchOfferLetters}
+          disabled={tableLoading}
+        >
+          {tableLoading ? 'Loading...' : 'Refresh'}
+        </button>
+      </div>
+    </div>
 
-                  <div className="card-body p-4">
-                    {tableLoading ? (
-                      <div className="text-center py-5">
-                        <div className="spinner-border" role="status">
-                          <span className="visually-hidden">Loading...</span>
-                        </div>
-                      </div>
-                    ) : offerLetters.length === 0 ? (
-                      <div className="alert alert-info">
-                        No offer letters found. Create one to get started!
-                      </div>
-                    ) : (
-                      <>
-                        {/* Offer Letter Status Table */}
-                        <h6 className="fw-bold mb-3">Offer Letter Status</h6>
-                        {/* Combined Offer Letter Table */}
-                        <div className="table-responsive">
-                          <table className="table table-hover">
-                            <thead className="table-light">
-                              <tr>
-                                <th>S.No.</th>
-                                <th>Candidate Name</th>
-                                <th>Email</th>
-                                <th>Position</th>
-                                <th>Employment Type</th>
-                                <th>Status</th>
-                                <th>Sent Date</th>
-                                <th>CC To</th>
-                                <th>Candidate Response</th>
-                                <th>Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {offerLetters.map((letter, index) => (
-                                <tr key={letter.id}>
-                                  <td className="fw-semibold">{index + 1}</td>
-                                  <td>{letter.name}</td>
-                                  <td>
-                                    <small>{letter.email}</small>
-                                  </td>
-                                  <td>{letter.role}</td>
-                                  <td>
-                                    <small className="badge bg-light text-dark">
-                                      {letter.employment_type === 'full-time' ? 'Full-Time' :
-                                      letter.employment_type === 'c2h' ? 'C2H' :
-                                      letter.employment_type === 'intern-paid' ? 'Paid Internship' :
-                                      'Unpaid Internship'}
-                                    </small>
-                                  </td>
-                                  <td>{getStatusBadge(letter.status)}</td>
-                                  <td>
-                                    <small>
-                                      {letter.sent_date ? new Date(letter.sent_date).toLocaleDateString('en-IN') : 'N/A'}
-                                    </small>
-                                  </td>
-                                  <td>
-                                    <small>{letter.cc_email || 'N/A'}</small>
-                                  </td>
-                                  <td>
-                                    {letter.status === 'Sent' ? (
-                                      getCandidateResponseBadge(letter.candidate_response || 'Pending')
-                                    ) : (
-                                      <span className="badge bg-secondary">N/A</span>
-                                    )}
-                                  </td>
-                                  <td>
-                                    <div className="d-flex gap-1 flex-wrap">
-                                      {/* View Button - Always visible */}
-                                      <button
-                                        className="btn btn-sm btn-info text-white"
-                                        onClick={() => handleViewOfferLetter(letter, letter.status === 'Draft' ? 'draft' : 'sent')}
-                                        title="View Offer Letter"
-                                      >
-                                        👁️ View
-                                      </button>
-                                      
-                                      {/* Response Buttons - Only for Sent letters */}
-                                      {letter.status === 'Sent' && (
-                                        <div className="btn-group btn-group-sm" role="group">
-                                          <button
-                                            type="button"
-                                            className={`btn ${letter.candidate_response === 'Accepted' ? 'btn-success' : 'btn-outline-success'}`}
-                                            onClick={() => handleUpdateCandidateResponse(letter.id, 'Accepted')}
-                                            title="Mark as Accepted"
-                                          >
-                                            ✅
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className={`btn ${letter.candidate_response === 'Rejected' ? 'btn-danger' : 'btn-outline-danger'}`}
-                                            onClick={() => handleUpdateCandidateResponse(letter.id, 'Rejected')}
-                                            title="Mark as Rejected"
-                                          >
-                                            ❌
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className={`btn ${letter.candidate_response === 'Pending' ? 'btn-warning' : 'btn-outline-warning'}`}
-                                            onClick={() => handleUpdateCandidateResponse(letter.id, 'Pending')}
-                                            title="Mark as Pending"
-                                          >
-                                            ⏳
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </>
+    <div className="card-body p-0">
+      {tableLoading ? (
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      ) : offerLetters.length === 0 ? (
+        <div className="p-4">
+          <div className="alert alert-info mb-0">
+            No offer letters found. Create one to get started.
+          </div>
+        </div>
+      ) : (
+        <div className="table-responsive">
+          <table className="table table-hover align-middle mb-0">
+            <thead>
+              <tr className="bg-light">
+                <th className="px-4 py-3 text-muted fw-semibold" style={{ fontSize: '0.8rem', letterSpacing: '0.05em' }}>S.NO</th>
+                <th className="px-3 py-3 text-muted fw-semibold" style={{ fontSize: '0.8rem', letterSpacing: '0.05em' }}>CANDIDATE</th>
+                <th className="px-3 py-3 text-muted fw-semibold" style={{ fontSize: '0.8rem', letterSpacing: '0.05em' }}>POSITION</th>
+                <th className="px-3 py-3 text-muted fw-semibold" style={{ fontSize: '0.8rem', letterSpacing: '0.05em' }}>TYPE</th>
+                <th className="px-3 py-3 text-muted fw-semibold" style={{ fontSize: '0.8rem', letterSpacing: '0.05em' }}>STATUS</th>
+                <th className="px-3 py-3 text-muted fw-semibold" style={{ fontSize: '0.8rem', letterSpacing: '0.05em' }}>SENT DATE</th>
+                <th className="px-3 py-3 text-muted fw-semibold" style={{ fontSize: '0.8rem', letterSpacing: '0.05em' }}>CC TO</th>
+                <th className="px-3 py-3 text-muted fw-semibold" style={{ fontSize: '0.8rem', letterSpacing: '0.05em' }}>RESPONSE</th>
+                <th className="px-3 py-3 text-muted fw-semibold" style={{ fontSize: '0.8rem', letterSpacing: '0.05em' }}>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {offerLetters.map((letter, index) => (
+                <tr key={letter.id}>
+                  <td className="px-4 py-3 text-muted" style={{ fontSize: '0.875rem' }}>
+                    {index + 1}
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="fw-semibold text-dark" style={{ fontSize: '0.9rem' }}>{letter.name}</div>
+                    <div className="text-muted" style={{ fontSize: '0.78rem' }}>{letter.email}</div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <span style={{ fontSize: '0.875rem' }}>{letter.role}</span>
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className="badge rounded-pill px-3 py-2"
+                      style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
+                        backgroundColor: '#f0f4ff',
+                        color: '#3b5bdb'
+                      }}>
+                      {letter.employment_type === 'full-time' ? 'Full-Time' :
+                       letter.employment_type === 'c2h' ? 'C2H' :
+                       letter.employment_type === 'intern-paid' ? 'Paid Intern' :
+                       'Unpaid Intern'}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3">
+                    {letter.status === 'Sent' && (
+                      <span className="badge rounded-pill px-3 py-2"
+                        style={{ fontSize: '0.75rem', fontWeight: 500, backgroundColor: '#d3f9d8', color: '#2b8a3e' }}>
+                        Sent
+                      </span>
                     )}
-                  </div>
-                </div>
-              )}
+                    {letter.status === 'Draft' && (
+                      <span className="badge rounded-pill px-3 py-2"
+                        style={{ fontSize: '0.75rem', fontWeight: 500, backgroundColor: '#fff3bf', color: '#e67700' }}>
+                        Draft
+                      </span>
+                    )}
+                    {letter.status === 'Failed' && (
+                      <span className="badge rounded-pill px-3 py-2"
+                        style={{ fontSize: '0.75rem', fontWeight: 500, backgroundColor: '#ffe0e0', color: '#c92a2a' }}>
+                        Failed
+                      </span>
+                    )}
+                    {!['Sent','Draft','Failed'].includes(letter.status) && (
+                      <span className="badge rounded-pill px-3 py-2"
+                        style={{ fontSize: '0.75rem', fontWeight: 500, backgroundColor: '#f1f3f5', color: '#495057' }}>
+                        {letter.status}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-3 text-muted" style={{ fontSize: '0.875rem' }}>
+                    {letter.sent_date ? new Date(letter.sent_date).toLocaleDateString('en-IN') : '—'}
+                  </td>
+                  <td className="px-3 py-3 text-muted" style={{ fontSize: '0.875rem' }}>
+                    {letter.cc_email || '—'}
+                  </td>
+                  <td className="px-3 py-3">
+                    {letter.status === 'Sent' ? (
+                      <>
+                        {letter.candidate_response === 'Accepted' && (
+                          <span className="badge rounded-pill px-3 py-2"
+                            style={{ fontSize: '0.75rem', fontWeight: 500, backgroundColor: '#d3f9d8', color: '#2b8a3e' }}>
+                            Accepted
+                          </span>
+                        )}
+                        {letter.candidate_response === 'Rejected' && (
+                          <span className="badge rounded-pill px-3 py-2"
+                            style={{ fontSize: '0.75rem', fontWeight: 500, backgroundColor: '#ffe0e0', color: '#c92a2a' }}>
+                            Rejected
+                          </span>
+                        )}
+                        {(!letter.candidate_response || letter.candidate_response === 'Pending') && (
+                          <span className="badge rounded-pill px-3 py-2"
+                            style={{ fontSize: '0.75rem', fontWeight: 500, backgroundColor: '#fff3bf', color: '#e67700' }}>
+                            Pending
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-muted" style={{ fontSize: '0.875rem' }}>—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-3">
+  <div className="d-flex flex-column align-items-center gap-1">
+    <button
+      className="btn btn-sm btn-outline-primary px-3"
+      style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', width: '70px' }}
+      onClick={() => handleViewOfferLetter(letter, letter.status === 'Draft' ? 'draft' : 'sent')}
+    >
+      View
+    </button>
+
+    {letter.status === 'Sent' && (
+      <div className="d-flex gap-1">
+        <button
+          type="button"
+          className={`btn btn-sm px-2 ${letter.candidate_response === 'Accepted' ? 'btn-success' : 'btn-outline-success'}`}
+          style={{ fontSize: '0.75rem', minWidth: '22px' }}
+          onClick={() => handleUpdateCandidateResponse(letter.id, 'Accepted')}
+          title="Mark Accepted"
+        >
+          A
+        </button>
+        <button
+          type="button"
+          className={`btn btn-sm px-2 ${letter.candidate_response === 'Rejected' ? 'btn-danger' : 'btn-outline-danger'}`}
+          style={{ fontSize: '0.75rem', minWidth: '22px' }}
+          onClick={() => handleUpdateCandidateResponse(letter.id, 'Rejected')}
+          title="Mark Rejected"
+        >
+          R
+        </button>
+        <button
+          type="button"
+          className={`btn btn-sm px-2 ${letter.candidate_response === 'Pending' ? 'btn-warning' : 'btn-outline-warning'}`}
+          style={{ fontSize: '0.75rem', minWidth: '22px' }}
+          onClick={() => handleUpdateCandidateResponse(letter.id, 'Pending')}
+          title="Mark Pending"
+        >
+          P
+        </button>
+      </div>
+    )}
+  </div>
+</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  </div>
+)}
             </div>
           </div>
         </div>

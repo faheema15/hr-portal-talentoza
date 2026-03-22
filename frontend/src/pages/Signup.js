@@ -299,7 +299,7 @@ function Signup() {
                       <button
                         type="button"
                         className="btn border-start-0"
-                        onClick={() => setShowPassword(!showPassword)}
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                         style={{ 
                           borderColor: '#dee2e6', 
                           background: 'white',

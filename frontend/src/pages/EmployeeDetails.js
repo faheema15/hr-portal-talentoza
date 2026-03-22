@@ -133,8 +133,8 @@ function EmployeeDetails() {
       photo_url: data.photo_url || null,
       full_name: data.full_name || data.user_id || "",
       designation: data.designation || "",
-      department_id: data.department_id || "",
-      reporting_manager_id: data.reporting_manager_id || "",
+      department_id: data.department_id ? String(data.department_id) : "",
+      reporting_manager_id: data.reporting_manager_id ? String(data.reporting_manager_id) : "",
       dob: data.dob ? data.dob.split('T')[0] : "",
       aadhar_no: data.aadhar_no || "",
       pan_no: data.pan_no || "",
@@ -344,11 +344,10 @@ function EmployeeDetails() {
         const data = await response.json();
         // Filter only users with Manager or HR roles
         const allEmployees = data.data || data || [];
-        const managersList = allEmployees.filter(emp => 
-          emp.user_role === 'Manager' || 
-          emp.user_role === 'SkipManager' || 
-          emp.user_role === 'HR'
-        );
+        const managersList = allEmployees.filter(emp => {
+          const role = emp.user_role || emp.assigned_role;
+          return role === 'Manager' || role === 'SkipManager' || role === 'HR';
+        });
         setManagers(managersList);
       }
     } catch (err) {
@@ -463,7 +462,7 @@ function EmployeeDetails() {
         setPhotoPreview(`${API_BASE_URL}/${cleanPath}`);
       }
       
-      setSuccessMessage('Photo uploaded successfully!');
+      setSuccessMessage('Photo uploaded successfully! Please click "Update Details" to save the changes.');
     } else {
       const errorData = await response.json();
       alert(`Error uploading photo: ${errorData.message}`);
@@ -987,11 +986,11 @@ const handlePhotoUpdate = async (photoUrl) => {
                         disabled={createdEmployee !== null}
                       >
                         <option value="">Select Manager</option>
-{managers.map(mgr => (
-  <option key={mgr.user_id} value={mgr.user_id}>
-    {mgr.user_name || mgr.full_name || mgr.user_email}
-  </option>
-))}
+                        {managers.map(mgr => (
+                          <option key={mgr.emp_id} value={mgr.emp_id}>
+                            {mgr.full_name || mgr.user_name || mgr.display_name}
+                          </option>
+                        ))}
                       </select>
                     </div>
 
@@ -1168,11 +1167,11 @@ const handlePhotoUpdate = async (photoUrl) => {
                         onChange={handleChange}
                       >
                         <option value="">Select Manager</option>
-{managers.map(mgr => (
-  <option key={mgr.user_id} value={mgr.user_id}>
-    {mgr.user_name || mgr.full_name || mgr.user_email}
-  </option>
-))}
+                        {managers.map(mgr => (
+                          <option key={mgr.emp_id} value={mgr.emp_id}>
+                            {mgr.full_name || mgr.user_name || mgr.display_name}
+                          </option>
+                        ))}
                       </select>
                     </div>
 

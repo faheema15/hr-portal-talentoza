@@ -137,24 +137,26 @@ class EmployeeDetails {
   static async findAll() {
     const query = `
       SELECT 
-        ed.emp_id,
-        ed.user_id,
-        ed.full_name,
-        ed.photo_url,
-        ed.contact1,
-        ed.email1,
-        u.id as user_id_from_users,
-        u.name as user_name,
-        u.email as user_email,
-        u.role as user_role,
-        ed.designation,
-        d.name as department_name,
-        ed.created_at,
-        COALESCE(ed.full_name, u.name, 'N/A') as display_name
-      FROM employee_details ed
-      LEFT JOIN users u ON ed.user_id = u.id
-      LEFT JOIN departments d ON ed.department_id = d.id
-      ORDER BY ed.created_at DESC
+      ed.emp_id,
+      ed.user_id,
+      ed.full_name,
+      ed.photo_url,
+      ed.contact1,
+      ed.email1,
+      u.id as user_id_from_users,
+      u.name as user_name,
+      u.email as user_email,
+      u.role as user_role,
+      ed.designation,
+      d.name as department_name,
+      ed.created_at,
+      COALESCE(ed.full_name, u.name, 'N/A') as display_name,
+      ps.assigned_role                          
+    FROM employee_details ed
+    LEFT JOIN users u ON ed.user_id = u.id
+    LEFT JOIN departments d ON ed.department_id = d.id
+    LEFT JOIN pending_signups ps ON ed.emp_id = ps.emp_id 
+    ORDER BY ed.created_at DESC
     `;
     const result = await pool.query(query);
     return result.rows;
