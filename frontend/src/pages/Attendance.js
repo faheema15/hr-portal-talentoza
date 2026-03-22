@@ -108,6 +108,7 @@ const fetchAttendanceForMonth = useCallback((month, year) => {
 
 
 // ONLY fetch employee data on initial load (ONCE)
+// eslint-disable-next-line react-hooks/exhaustive-deps
 useEffect(() => {
   const fetchData = async () => {
     const empIdToFetch = id !== "new" ? id : currentUser?.emp_id;
@@ -205,17 +206,18 @@ useEffect(() => {
 
       const empUrl = isNewEntry 
         ? `${API_BASE_URL}/api/attendance`
-        : `${API_BASE_URL}/api/attendance/${id}`;
+        : `${API_BASE_URL}/api/attendance/${formData.empId}`;
       
       const empMethod = isNewEntry ? 'POST' : 'PUT';
-      
+      console.log("Updating empId:", formData.empId);
+console.log("URL:", empUrl);
       const empResponse = await fetch(empUrl, {
-        method: empMethod,
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(profileData),
       });
 
       const empResult = await empResponse.json();
@@ -338,9 +340,11 @@ const handleDateClick = (day) => {
     return;
   }
 
-  // Cycle through: present -> absent -> present
+  // Cycle: present → half_day → absent → present
   let newStatus;
-  if (currentStatus === "present") {
+  if (currentStatus === "present" || !currentStatus) {
+    newStatus = "half_day";
+  } else if (currentStatus === "half_day") {
     newStatus = "absent";
   } else {
     newStatus = "present";
@@ -352,6 +356,7 @@ const handleDateClick = (day) => {
   }));
   setHasChanges(true);
 };
+
 
 const getDateStatus = (day) => {
   const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;

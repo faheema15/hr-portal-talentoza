@@ -3,34 +3,29 @@ const pool = require('../config/database');
 class Insurance {
   // Create insurance record
   static async create(data) {
-    const query = `
-      INSERT INTO insurance (
-        emp_id, photo, emp_name, designation, department_id, department_name,
-        reporting_manager, project_name,
-        insurance_provider, policy_number, policy_type, coverage_amount, premium_amount,
-        policy_start_date, policy_end_date, policy_status,
-        nominee_details, nominee_relation, nominee_contact_number,
-        dependents_count, dependent_details, claim_history, remarks
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-        $21, $22, $23
-      )
-      RETURNING *
-    `;
-    
-    const values = [
-      data.empId, data.photo, data.empName, data.designation, data.departmentId, data.departmentName,
-      data.reportingManager, data.projectName,
-      data.insuranceProvider, data.policyNumber, data.policyType, data.coverageAmount, data.premiumAmount,
-      data.policyStartDate, data.policyEndDate, data.policyStatus,
-      data.nomineeDetails, data.nomineeRelation, data.nomineeContactNumber,
-      data.dependentsCount, data.dependentDetails, data.claimHistory, data.remarks
-    ];
+  const query = `
+    INSERT INTO insurance (
+      emp_id, provider, policy_number, policy_type, coverage_amount, premium_amount,
+      start_date, end_date, status, remarks
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+    RETURNING *
+  `;
+  const values = [
+    data.empId,
+    data.insuranceProvider || null,
+    data.policyNumber || null,
+    data.policyType || null,
+    parseFloat(data.coverageAmount) || 0,
+    parseFloat(data.premiumAmount) || 0,
+    data.policyStartDate || null,
+    data.policyEndDate || null,
+    data.policyStatus || 'Active',
+    data.remarks || null
+  ];
+  const result = await pool.query(query, values);
+  return result.rows[0];
+}
 
-    const result = await pool.query(query, values);
-    return result.rows[0];
-  }
 
   // Get all insurance records
   static async findAll() {
@@ -96,33 +91,32 @@ class Insurance {
   }
 
   // Update insurance record
-  static async update(empId, data) {
-    const query = `
-      UPDATE insurance SET
-        photo = $1, emp_name = $2, designation = $3, department_id = $4, department_name = $5,
-        reporting_manager = $6, project_name = $7,
-        insurance_provider = $8, policy_number = $9, policy_type = $10, coverage_amount = $11, premium_amount = $12,
-        policy_start_date = $13, policy_end_date = $14, policy_status = $15,
-        nominee_details = $16, nominee_relation = $17, nominee_contact_number = $18,
-        dependents_count = $19, dependent_details = $20, claim_history = $21, remarks = $22,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE emp_id = $23
-      RETURNING *
-    `;
-    
-    const values = [
-      data.photo, data.empName, data.designation, data.departmentId, data.departmentName,
-      data.reportingManager, data.projectName,
-      data.insuranceProvider, data.policyNumber, data.policyType, data.coverageAmount, data.premiumAmount,
-      data.policyStartDate, data.policyEndDate, data.policyStatus,
-      data.nomineeDetails, data.nomineeRelation, data.nomineeContactNumber,
-      data.dependentsCount, data.dependentDetails, data.claimHistory, data.remarks,
-      empId
-    ];
+ static async update(empId, data) {
+  const query = `
+    UPDATE insurance SET
+      provider = $1, policy_number = $2, policy_type = $3,
+      coverage_amount = $4, premium_amount = $5,
+      start_date = $6, end_date = $7, status = $8, remarks = $9,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE emp_id = $10
+    RETURNING *
+  `;
+  const values = [
+    data.insuranceProvider || null,
+    data.policyNumber || null,
+    data.policyType || null,
+    parseFloat(data.coverageAmount) || 0,
+    parseFloat(data.premiumAmount) || 0,
+    data.policyStartDate || null,
+    data.policyEndDate || null,
+    data.policyStatus || 'Active',
+    data.remarks || null,
+    empId
+  ];
+  const result = await pool.query(query, values);
+  return result.rows[0];
+}
 
-    const result = await pool.query(query, values);
-    return result.rows[0];
-  }
 
   // Update policy status only
   static async updateStatus(empId, status) {
