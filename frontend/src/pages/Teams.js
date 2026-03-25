@@ -19,6 +19,8 @@ function Teams() {
   const [editingProject, setEditingProject] = useState(null);
   const [editingTeam, setEditingTeam] = useState(null);
   const [viewingTeam, setViewingTeam] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+const recordsPerPage = 15;
   const [formData, setFormData] = useState({
     team_name: "",
     team_head_id: "",
@@ -313,7 +315,11 @@ const handleRemoveProjectFromTeam = async (project_id) => {
     team.team_head_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     team.department_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+const indexOfLast = currentPage * recordsPerPage;
+const indexOfFirst = indexOfLast - recordsPerPage;
+const currentTeams = filteredTeams.slice(indexOfFirst, indexOfLast);
 
+const totalPages = Math.ceil(filteredTeams.length / recordsPerPage) || 1;
   if (!hasAccess) return null;
 
   return (
@@ -354,7 +360,10 @@ const handleRemoveProjectFromTeam = async (project_id) => {
                     className="form-control" 
                     placeholder="Search teams..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => {
+  setSearchTerm(e.target.value);
+  setCurrentPage(1);
+}}
                   />
                   {['HR', 'skip_level_manager'].includes(currentUser?.role) && (
                     <button 
@@ -388,7 +397,7 @@ const handleRemoveProjectFromTeam = async (project_id) => {
                   </thead>
                   <tbody>
                     {filteredTeams.length > 0 ? (
-                      filteredTeams.map((team) => (
+                      currentTeams.map((team) => (
                         <tr key={team.team_id}>
                           <td className="fw-semibold text-muted">{team.team_id}</td>
                           <td className="fw-semibold text-primary">{team.team_name}</td>
@@ -438,7 +447,33 @@ const handleRemoveProjectFromTeam = async (project_id) => {
                 </table>
               </div>
             )}
+{filteredTeams.length > 0 && (
+  <>
+    <div className="d-flex justify-content-end mt-3">
+      <div className="btn-group">
+        <button
+          className="btn btn-outline-secondary"
+          disabled={currentPage === 1}
+          onClick={() => setCurrentPage(currentPage - 1)}
+        >
+          Previous
+        </button>
 
+        <button className="btn btn-primary">
+          {currentPage}
+        </button>
+
+        <button
+          className="btn btn-outline-secondary"
+          disabled={currentPage === totalPages}
+          onClick={() => setCurrentPage(currentPage + 1)}
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  </>
+)}
           </div>
         </div>
       </div>

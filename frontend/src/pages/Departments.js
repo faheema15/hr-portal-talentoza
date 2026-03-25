@@ -21,6 +21,8 @@ function Departments() {
     dept_name: "",
     head_id: ""
   });
+  const [currentPage, setCurrentPage] = useState(1);
+const recordsPerPage = 15;
 
   // Check access
   const hasAccess = ['HR', 'SkipManager'].includes(currentUser?.role);
@@ -185,6 +187,11 @@ function Departments() {
     dept.dept_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     dept.head_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const indexOfLast = currentPage * recordsPerPage;
+const indexOfFirst = indexOfLast - recordsPerPage;
+const currentDepartments = filteredDepartments.slice(indexOfFirst, indexOfLast);
+
+const totalPages = Math.ceil(filteredDepartments.length / recordsPerPage) || 1;
 
   if (!hasAccess) return null;
 
@@ -226,7 +233,10 @@ function Departments() {
                     className="form-control" 
                     placeholder="Search departments..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => {
+  setSearchTerm(e.target.value);
+  setCurrentPage(1);
+}}
                   />
                   {currentUser?.role === 'HR' && (
                     <button 
@@ -260,7 +270,7 @@ function Departments() {
                   </thead>
                   <tbody>
                     {filteredDepartments.length > 0 ? (
-                      filteredDepartments.map((dept) => (
+                      currentDepartments.map((dept) => (
                         <tr key={dept.dept_id}>
                           <td className="text-muted">{dept.dept_id}</td>
                           <td className="fw-semibold text-primary">{dept.dept_name}</td>
@@ -301,12 +311,77 @@ function Departments() {
                     )}
                   </tbody>
                 </table>
-              </div>
+                </div>
             )}
+                
 
-          </div>
-        </div>
+{filteredDepartments.length > 0 && (
+  <>
+    <style>
+    {`
+    .segment-pagination {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    .segment-pagination .group {
+      display: flex;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #e5e7eb;
+    }
+
+    .segment-pagination button {
+      border: none;
+      background: transparent;
+      padding: 8px 16px;
+      font-size: 16px;
+      color: #555;
+      cursor: pointer;
+    }
+
+    .segment-pagination button.active {
+      background-color: #1f6feb;
+      color: white;
+    }
+
+    .segment-pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    `}
+    </style>
+
+    <div className="segment-pagination">
+      <div className="group">
+        <button
+          disabled={currentPage === 1}
+          onClick={() => setCurrentPage(currentPage - 1)}
+        >
+          Previous
+        </button>
+
+        <button className="active">
+          {currentPage}
+        </button>
+
+        <button
+          disabled={currentPage === totalPages}
+          onClick={() => setCurrentPage(currentPage + 1)}
+        >
+          Next
+        </button>
       </div>
+    </div>
+  </>
+)}
+</div>   
+</div>   
+</div>
+        
+    
 
       {/* Edit/Create Modal */}
       {showModal && (

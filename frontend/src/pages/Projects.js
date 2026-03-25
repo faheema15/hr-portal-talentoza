@@ -14,7 +14,10 @@ function Projects() {
   const [showModal, setShowModal] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const [potentialManagers, setPotentialManagers] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+const recordsPerPage = 15;
   const [formData, setFormData] = useState({
+    
     project_name: "",
     start_date: "",
     end_date: "",
@@ -182,6 +185,11 @@ function Projects() {
     project.project_head_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     project.status?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const indexOfLast = currentPage * recordsPerPage;
+const indexOfFirst = indexOfLast - recordsPerPage;
+const currentProjects = filteredProjects.slice(indexOfFirst, indexOfLast);
+
+const totalPages = Math.ceil(filteredProjects.length / recordsPerPage) || 1;
 
   if (!hasAccess) return null;
 
@@ -223,7 +231,10 @@ function Projects() {
                     className="form-control" 
                     placeholder="Search projects..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => {
+  setSearchTerm(e.target.value);
+  setCurrentPage(1);
+}}
                   />
                   {canCreate && (
                     <button 
@@ -258,7 +269,7 @@ function Projects() {
                   </thead>
                   <tbody>
                     {filteredProjects.length > 0 ? (
-                      filteredProjects.map((project) => (
+                      currentProjects.map((project) => (
                         <tr key={project.project_id}>
                           <td className="text-muted">{project.project_id}</td>
                           <td className="fw-semibold text-primary">{project.project_name}</td>
@@ -307,6 +318,68 @@ function Projects() {
                 </table>
               </div>
             )}
+            {filteredProjects.length > 0 && (
+  <>
+    <style>
+    {`
+    .segment-pagination {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    .segment-pagination .group {
+      display: flex;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #e5e7eb;
+    }
+
+    .segment-pagination button {
+      border: none;
+      background: transparent;
+      padding: 8px 16px;
+      font-size: 16px;
+      color: #555;
+      cursor: pointer;
+    }
+
+    .segment-pagination button.active {
+      background-color: #1f6feb;
+      color: white;
+    }
+
+    .segment-pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    `}
+    </style>
+
+    <div className="segment-pagination">
+      <div className="group">
+        <button
+          disabled={currentPage === 1}
+          onClick={() => setCurrentPage(currentPage - 1)}
+        >
+          Previous
+        </button>
+
+        <button className="active">
+          {currentPage}
+        </button>
+
+        <button
+          disabled={currentPage === totalPages}
+          onClick={() => setCurrentPage(currentPage + 1)}
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  </>
+)}
 
           </div>
         </div>

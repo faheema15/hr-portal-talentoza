@@ -186,12 +186,20 @@ exports.getEmployeeById = async (req, res) => {
 exports.updateEmployee = async (req, res) => {
   try {
     const existingEmployee = await EmployeeDetails.findByEmpId(req.params.id);
-    if (!existingEmployee) {
-      return res.status(404).json({
-        success: false,
-        message: 'Employee not found'
-      });
-    }
+
+if (!existingEmployee) {
+  return res.status(404).json({
+    success: false,
+    message: 'Employee not found'
+  });
+}
+
+if (existingEmployee.is_deleted) {
+  return res.status(400).json({
+    success: false,
+    message: 'Cannot update deleted employee'
+  });
+}
     
     const employee = await EmployeeDetails.update(req.params.id, req.body);
     
@@ -213,26 +221,121 @@ exports.updateEmployee = async (req, res) => {
 // Delete employee
 exports.deleteEmployee = async (req, res) => {
   try {
-    const employee = await EmployeeDetails.delete(req.params.id);
-    
+    const { last_working_date, reason_for_leaving } = req.body;
+
+    const employee = await EmployeeDetails.delete(req.params.id, {
+  last_working_date,
+  reason_for_leaving
+});
+
     if (!employee) {
       return res.status(404).json({
         success: false,
         message: 'Employee not found'
       });
     }
-    
+
     res.status(200).json({
       success: true,
-      message: 'Employee deleted successfully',
+      message: 'Employee soft deleted successfully',
       data: employee
     });
   } catch (error) {
     console.error('Error deleting employee:', error);
+    if (error.message.includes('already deleted')) {
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
     res.status(500).json({
       success: false,
       message: 'Error deleting employee',
       error: error.message
     });
+  }
+};
+exports.getActiveEmployees = async (req, res) => {
+  try {
+    const employees = await EmployeeDetails.findAll(false);
+
+    res.status(200).json({
+      success: true,
+      data: employees
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching active employees',
+      error: error.message
+    });
+  }
+};
+exports.getAllEmployeesForHR = async (req, res) => {
+  try {
+    const employees = await EmployeeDetails.findAll(true);
+
+    res.status(200).json({
+      success: true,
+      data: employees
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching employee list',
+      error: error.message
+    });
+  }
+};
+
+//  GET FULL DETAILS (FOR DELETED MODAL)
+exports.getFullEmployeeDetails = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(`
+      SELECT 
+        ed.*,
+        COALESCE(ed.email1, u.email) AS email,
+        u.email as user_email,
+        d.name as department_name,
+        jd.date_of_joining,
+        bd.bank_name,
+        bd.branch_address,
+        bd.account_number,
+        bd.ifsc_code,
+        s.basic_salary,
+        s.hra,
+        s.gross_salary,
+        s.net_salary,
+        s.salary_month,
+        ins.provider as insurance_provider,
+        ins.policy_number,
+        ins.policy_type,
+        ins.coverage_amount,
+        ins.status as insurance_status,
+        bgv.status as bgv_status,
+        bgv.remarks as bgv_remarks
+      FROM employee_details ed
+      LEFT JOIN users u ON ed.user_id = u.id
+      LEFT JOIN departments d ON ed.department_id = d.id
+      LEFT JOIN joining_details jd ON ed.emp_id = jd.emp_id
+      LEFT JOIN bank_details bd ON ed.emp_id = bd.emp_id AND bd.is_primary = true
+      LEFT JOIN salary s ON ed.emp_id = s.emp_id
+      LEFT JOIN insurance ins ON ed.emp_id = ins.emp_id
+      LEFT JOIN bgv ON ed.emp_id = bgv.emp_id
+      WHERE ed.emp_id = $1
+      ORDER BY s.salary_month DESC
+      LIMIT 1
+    `, [id]);
+
+    if (!result.rows[0]) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error fetching details" });
   }
 };

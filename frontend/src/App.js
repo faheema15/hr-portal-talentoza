@@ -20,6 +20,7 @@ import OfferLetter from "./pages/OfferLetter";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RouteHandler from "./components/RouteHandler";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
+import EmployeeList from "./pages/EmployeeList";
 
 function App() {
   return (
@@ -56,6 +57,16 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+  path="/employee-list" 
+  element={
+    <ProtectedRoute>
+      <RoleProtectedRoute allowedRoles={['HR']}>
+        <EmployeeList />
+      </RoleProtectedRoute>
+    </ProtectedRoute>
+  } 
+/>
         
         {/* Joining Details Routes */}
         <Route 
@@ -243,7 +254,9 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+  
   );
 }
+
 
 export default App;

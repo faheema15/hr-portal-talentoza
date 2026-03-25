@@ -32,7 +32,7 @@ if (isProduction) {
     storage: gcsStorage,
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB for documents
     fileFilter: (req, file, cb) => {
-      const allowedTypes = /pdf|doc|docx|jpg|jpeg|png|gif|webp/;
+      const allowedTypes = /pdf|doc|docx|jpg|jpeg|png|gif|webp|jfif/;
       const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
       const mimetype = allowedTypes.test(file.mimetype) || file.mimetype.includes('document');
       
@@ -98,7 +98,7 @@ if (isProduction) {
     storage: localStorage,
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     fileFilter: (req, file, cb) => {
-      const allowedTypes = /pdf|doc|docx|jpg|jpeg|png|gif|webp/;
+      const allowedTypes = /pdf|doc|docx|jpg|jpeg|png|gif|webp|jfif/;
       const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
       const mimetype = allowedTypes.test(file.mimetype) || file.mimetype.includes('document');
       

@@ -91,6 +91,11 @@ function EmployeeDetails() {
   const [loading, setLoading] = useState(!isNewEmployee);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+const [deleteData, setDeleteData] = useState({
+  lastWorkingDate: "",
+  reason: ""
+});
   const [createdEmployee, setCreatedEmployee] = useState(null);
 
   const fetchEmployee = useCallback(async () => {
@@ -127,6 +132,7 @@ function EmployeeDetails() {
 
     const responseData = await response.json();
     const data = responseData.data || responseData;
+    console.log("FINAL DATA:", data);
     
     const employeeData = {
       emp_id: data.emp_id || "",
@@ -141,7 +147,7 @@ function EmployeeDetails() {
       passport_no: data.passport_no || "",
       contact1: data.contact1 || "",
       contact2: data.contact2 || "",
-      email1: data.email1 || "",
+      email1: data.email1 || data.email || data.user_email || "",
       email2: data.email2 || "",
       father_name: data.father_name || "",
       mother_name: data.mother_name || "",
@@ -160,9 +166,9 @@ function EmployeeDetails() {
       aadhar_document_url: data.aadhar_document_url || null,
       pan_document_url: data.pan_document_url || null,
     };
-
-    setFormData(employeeData);
-    setOriginalData(employeeData);
+console.log("FORM DATA:", employeeData);
+   setFormData(employeeData);
+setOriginalData(employeeData);
     
     // ============================================
     // FIX: Handle photo URL properly
@@ -218,7 +224,7 @@ function EmployeeDetails() {
   const handleFileUpload = async (file, fieldType) => {
     if (!file) return null;
 
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png' , 'image/jfif', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     if (!allowedTypes.includes(file.type)) {
       alert('Please upload a valid file (PDF, JPG, PNG, DOC, DOCX)');
       return null;
@@ -407,7 +413,7 @@ function EmployeeDetails() {
   if (!file) return;
 
   // Validate file type
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp' , 'image/jfif'];
   if (!allowedTypes.includes(file.type)) {
     alert('Please upload a valid image file (JPG, PNG, GIF, WEBP)');
     return;
@@ -542,7 +548,10 @@ const handlePhotoUpdate = async (photoUrl) => {
             department_id: formData.department_id,
             reporting_manager_id: formData.reporting_manager_id
           }
-        : formData;
+        : {
+    ...formData,
+    email: formData.email1
+  };
       
       const response = await fetch(url, {
         method: method,
@@ -580,6 +589,45 @@ const handlePhotoUpdate = async (photoUrl) => {
       setLoading(false);
     }
   };
+  const handleDeleteEmployee = async () => {
+
+  if (!deleteData.lastWorkingDate || !deleteData.reason) {
+    alert("Please fill Last Working Date and Reason");
+    return;
+  }
+
+  try {
+    const token = sessionStorage.getItem('token');
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/employee-details/soft-delete/${id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          last_working_date: deleteData.lastWorkingDate, 
+          reason_for_leaving: deleteData.reason                      
+        })
+      }
+    );
+
+    if (response.ok) {
+      alert("Employee deleted successfully");
+
+      setShowDeleteModal(false); 
+      navigate("/employee-details");
+    } else {
+      const err = await response.json();
+      alert(err.message || "Error deleting employee");
+    }
+  } catch (error) {
+    console.error(error);
+    alert("Error deleting employee");
+  }
+};
 
   // --- START CRUD HANDLERS ---
 
@@ -807,19 +855,22 @@ const handlePhotoUpdate = async (photoUrl) => {
     return (
       <div className="min-vh-100 bg-light">
         <nav className="navbar navbar-dark bg-dark shadow-sm">
-          <div className="container-fluid px-4">
-            <button 
-              className="btn btn-outline-light btn-sm"
-              onClick={() => navigate(-1)}
-            >
-              ← Back 
-            </button>
-            <span className="navbar-brand mb-0 h1 fw-bold">
-              <span className="text-primary">Employee</span> Details
-            </span>
-            <div style={{ width: "120px" }}></div>
-          </div>
-        </nav>
+  <div className="container-fluid px-4 d-flex justify-content-between align-items-center">
+    
+    <button 
+      className="btn btn-outline-light btn-sm"
+      onClick={() => navigate(-1)}
+    >
+      ← Back 
+    </button>
+
+    <span className="navbar-brand mb-0 h1 fw-bold text-primary">
+      {isNewEmployee ? 'Create New Employee' : 'Employee Details'}
+    </span>
+
+  </div>
+</nav>
+        
         <div className="container py-5">
           <div className="card shadow-sm border-0">
             <div className="card-body p-5 text-center">
@@ -843,17 +894,18 @@ const handlePhotoUpdate = async (photoUrl) => {
   return (
     <div className="min-vh-100 bg-light">
       <nav className="navbar navbar-dark bg-dark shadow-sm">
-        <div className="container-fluid px-4">
+        <div className="container-fluid px-4 position-relative">
           <button 
-            className="btn btn-outline-light btn-sm"
+            className="btn btn-outline-light btn-sm position-absolute start-0 ms-3"
             onClick={() => navigate(-1)}
           >
             ← Back 
           </button>
-          <span className="navbar-brand mb-0 h1 fw-bold">
-            <span className="text-primary">{isNewEmployee ? 'Create New Employee' : 'Employee Details'}</span>
+          <span className="navbar-brand  mx-auto fw-bold text-center">
+            <span className="text-primary">
+              {isNewEmployee ? 'Create New Employee' : 'Employee Details'}</span>
           </span>
-          <div style={{ width: "120px" }}></div>
+          
         </div>
       </nav>
 
@@ -1268,6 +1320,7 @@ const handlePhotoUpdate = async (photoUrl) => {
                         onChange={handleChange}
                         placeholder="employee@company.com"
                       />
+
                     </div>
 
                     <div className="col-md-6">
@@ -1276,7 +1329,7 @@ const handlePhotoUpdate = async (photoUrl) => {
                         type="email" 
                         className="form-control"
                         name="email2"
-                        value={formData.email2}
+                        value={formData.email2 || ""}
                         onChange={handleChange}
                         placeholder="Optional"
                       />
@@ -1496,7 +1549,7 @@ const handlePhotoUpdate = async (photoUrl) => {
                       <input 
                         type="file"
                         className="form-control"
-                        accept=".pdf,.jpg,.jpeg,.png"
+                        accept=".pdf,.jpg,.jpeg,.png,.jfif"
                         onChange={async (e) => {
                           const file = e.target.files[0];
                           if (file) {
@@ -1530,7 +1583,7 @@ const handlePhotoUpdate = async (photoUrl) => {
                       <input 
                         type="file"
                         className="form-control"
-                        accept=".pdf,.jpg,.jpeg,.png"
+                        accept=".pdf,.jpg,.jpeg,.png,.jfif"
                         onChange={async (e) => {
                           const file = e.target.files[0];
                           if (file) {
@@ -1681,7 +1734,7 @@ const handlePhotoUpdate = async (photoUrl) => {
                                   <input 
                                     type="file"
                                     className="form-control"
-                                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.jfif"
                                     onChange={async (e) => {
                                       const file = e.target.files[0];
                                       if (file) {
@@ -1880,7 +1933,7 @@ const handlePhotoUpdate = async (photoUrl) => {
                                   <input 
                                     type="file"
                                     className="form-control"
-                                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.jfif"
                                     onChange={async (e) => {
                                       const file = e.target.files[0];
                                       if (file) {
@@ -2087,18 +2140,86 @@ const handlePhotoUpdate = async (photoUrl) => {
                       You have unsaved changes!
                     </div>
                   )}
-                  <div className="d-flex gap-3 justify-content-end">
-                    {!createdEmployee && (
-                      <button 
-                        type="submit" 
-                        className="btn btn-primary px-4"
-                        disabled={!isNewEmployee && !hasChanges}
-                      >
-                        {isNewEmployee ? "Create Employee ID" : "Update Details"}
-                      </button>
-                    )}
-                  </div>
-                </div>
+                  <div style={{ width: "100%", marginTop: "20px" }}>
+  <div style={{ display: "flex", justifyContent: "space-between" }}>
+    
+    
+    {!isNewEmployee && (
+      <button
+        type="button"
+        className="btn btn-danger px-4"
+        onClick={() => setShowDeleteModal(true)}
+      >
+        Delete Employee
+      </button>
+    )}
+
+    
+    {!createdEmployee && (
+      <button 
+        type="submit" 
+        className="btn btn-primary px-4"
+        disabled={!isNewEmployee && !hasChanges}
+      >
+        {isNewEmployee ? "Create Employee ID" : "Update Details"}
+      </button>
+    )}
+    </div>
+  </div>
+</div>
+                {showDeleteModal && (
+  <div className="modal d-block" style={{ background: "rgba(0,0,0,0.5)" }}>
+    <div className="modal-dialog">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">Delete Employee</h5>
+          <button className="btn-close" onClick={() => setShowDeleteModal(false)}></button>
+        </div>
+
+        <div className="modal-body">
+          <div className="mb-3">
+            <label className="form-label">Last Working Date</label>
+            <input
+              type="date"
+              className="form-control"
+              value={deleteData.lastWorkingDate}
+              onChange={(e) =>
+                setDeleteData({ ...deleteData, lastWorkingDate: e.target.value })
+              }
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Reason for Leaving</label>
+            <textarea
+              className="form-control"
+              rows="3"
+              value={deleteData.reason}
+              onChange={(e) =>
+                setDeleteData({ ...deleteData, reason: e.target.value })
+              }
+            ></textarea>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowDeleteModal(false)}
+          >
+            Cancel
+          </button>
+          <button
+            className="btn btn-danger"
+            onClick={handleDeleteEmployee}
+          >
+            Confirm Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
               </div>
 
             </form>
