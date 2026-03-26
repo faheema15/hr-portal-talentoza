@@ -6,8 +6,8 @@ class Insurance {
   const query = `
     INSERT INTO insurance (
       emp_id, provider, policy_number, policy_type, coverage_amount, premium_amount,
-      start_date, end_date, status, remarks
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      start_date, end_date, status,  nominee_details, nominee_relation, nominee_contact_number, remarks, dependents_count, dependent_details, claim_history
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
     RETURNING *
   `;
   const values = [
@@ -20,7 +20,13 @@ class Insurance {
     data.policyStartDate || null,
     data.policyEndDate || null,
     data.policyStatus || 'Active',
-    data.remarks || null
+     data.nomineeDetails || null,
+    data.nomineeRelation || null,
+    data.nomineeContactNumber || null,
+    data.remarks || null,
+    parseInt(data.dependentsCount) || 0,
+  data.dependentDetails || null,
+  data.claimHistory || null
   ];
   const result = await pool.query(query, values);
   return result.rows[0];
@@ -96,9 +102,15 @@ class Insurance {
     UPDATE insurance SET
       provider = $1, policy_number = $2, policy_type = $3,
       coverage_amount = $4, premium_amount = $5,
-      start_date = $6, end_date = $7, status = $8, remarks = $9,
+      start_date = $6, end_date = $7, status = $8,  nominee_details = $9,
+      nominee_relation = $10,
+      nominee_contact_number = $11,
+
+      remarks = $12,dependents_count = $13,
+    dependent_details = $14,
+    claim_history = $15,
       updated_at = CURRENT_TIMESTAMP
-    WHERE emp_id = $10
+    WHERE emp_id = $16
     RETURNING *
   `;
   const values = [
@@ -110,7 +122,13 @@ class Insurance {
     data.policyStartDate || null,
     data.policyEndDate || null,
     data.policyStatus || 'Active',
+    data.nomineeDetails || null,
+    data.nomineeRelation || null,
+    data.nomineeContactNumber || null,
     data.remarks || null,
+    parseInt(data.dependentsCount) || 0,
+  data.dependentDetails || null,
+  data.claimHistory || null,
     empId
   ];
   const result = await pool.query(query, values);

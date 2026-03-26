@@ -499,6 +499,26 @@ const handlePhotoUpdate = async (photoUrl) => {
   }
 };
 
+const handleDocumentUpdate = async (updateData) => {
+  try {
+    const token = sessionStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/employee-details/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(updateData)
+    });
+
+    if (!response.ok) {
+      console.error('Failed to update document in database');
+    }
+  } catch (error) {
+    console.error('Error updating document:', error);
+  }
+};
+
   const handleSubmit = async (e) => {
   e.preventDefault();
   
@@ -1556,7 +1576,7 @@ const handlePhotoUpdate = async (photoUrl) => {
                             const url = await handleFileUpload(file, 'aadhar');
                             if (url) {
                               setFormData(prev => ({ ...prev, aadhar_document_url: url }));
-                              handlePhotoUpdate({ aadhar_document_url: url });
+                              handleDocumentUpdate({ aadhar_document_url: url });
                             }
                           }
                         }}
@@ -1590,7 +1610,7 @@ const handlePhotoUpdate = async (photoUrl) => {
                             const url = await handleFileUpload(file, 'pan');
                             if (url) {
                               setFormData(prev => ({ ...prev, pan_document_url: url }));
-                              handlePhotoUpdate({ pan_document_url: url });
+                              handleDocumentUpdate({ pan_document_url: url });
                             }
                           }
                         }}

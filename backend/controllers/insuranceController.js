@@ -87,7 +87,13 @@ exports.getInsuranceById = async (req, res) => {
         start_date,
         end_date,
         status,
-        remarks
+        nominee_details,
+  nominee_relation,
+  nominee_contact_number,
+        remarks,
+        dependents_count,
+  dependent_details,
+  claim_history
       FROM insurance
       WHERE emp_id = $1
       ORDER BY created_at DESC
@@ -125,8 +131,15 @@ exports.getInsuranceById = async (req, res) => {
       policyStartDate: insuranceData.start_date || "",
       policyEndDate: insuranceData.end_date || "",
       policyStatus: insuranceData.status || "Active",
-      remarks: insuranceData.remarks || ""
+      nomineeDetails: insuranceData.nominee_details || "",
+nomineeRelation: insuranceData.nominee_relation || "",
+nomineeContactNumber: insuranceData.nominee_contact_number || "",
+      remarks: insuranceData.remarks || "",
+      dependentsCount: insuranceData.dependents_count || "",
+dependentDetails: insuranceData.dependent_details || "",
+claimHistory: insuranceData.claim_history || "",
     };
+
     
     res.status(200).json({
       success: true,

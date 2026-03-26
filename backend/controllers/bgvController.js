@@ -89,8 +89,7 @@ exports.getBGVById = async (req, res) => {
     // Fetch BGV details (might not exist yet)
     const bgvQuery = `
       SELECT 
-        status,
-        remarks
+        bgv_status, reason_for_reject
       FROM bgv
       WHERE emp_id = $1
     `;
@@ -120,8 +119,8 @@ exports.getBGVById = async (req, res) => {
       dateOfJoining: joiningData?.date_of_joining || null,
       
       // BGV specific info (editable by HR)
-      bgvStatus: bgvData.status || "",
-      reasonForReject: bgvData.remarks || ""
+      bgvStatus: bgvData.bgv_status || "",
+      reasonForReject: bgvData.reason_for_reject || ""
     };
     
     res.status(200).json({
