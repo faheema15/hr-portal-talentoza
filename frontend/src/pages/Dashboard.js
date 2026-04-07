@@ -31,7 +31,8 @@ function Dashboard() {
     { id: 9, title: "Insurance", icon: "🛡️", path: "/insurance", color: "#DB2777", useEmployeeList: true }, 
     { id: 10, title: "Departments", icon: "🏢", path: "/departments", color: "#16A34A", allowedRoles: ['HR', 'skip_level_manager'], useEmployeeList: false }, 
     { id: 11, title: "Teams", icon: "👥", path: "/teams", color: "#0D9488", allowedRoles: ['HR', 'skip_level_manager'], useEmployeeList: false },
-    { id: 12, title: "Offer Letter", icon: "📄", path: "/offer-letter", color: "#8B5CF6", allowedRoles: ['HR', 'skip_level_manager'], useEmployeeList: false }
+    { id: 12, title: "Offer Letter", icon: "📄", path: "/offer-letter", color: "#8B5CF6", allowedRoles: ['HR', 'skip_level_manager'], useEmployeeList: false },
+    {id: 13, title: "Employee List", icon: "📋", path: "/employee-list",color: "#0EA5E9",allowedRoles: ['HR'],   useEmployeeList: false  }
   ];
 
   const menuItems = allMenuItems.filter(item => {

@@ -104,7 +104,7 @@ const FileUpload = ({
 
   const isImageFile = (url) => {
     const ext = getFileExtension(url);
-    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg' , 'jfif'].includes(ext);
   };
 
   const getFileName = (url) => {

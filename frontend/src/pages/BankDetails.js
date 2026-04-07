@@ -561,7 +561,7 @@ function BankDetails() {
                   <input 
                     type="file"
                     className="form-control"
-                    accept=".pdf,.jpg,.jpeg,.png"
+                    accept=".pdf,.jpg,.jpeg,.png,.jfif"
                     onChange={async (e) => {
                       const file = e.target.files[0];
                       if (file) {
@@ -617,7 +617,7 @@ function BankDetails() {
                   <input 
                     type="file"
                     className="form-control"
-                    accept=".pdf,.jpg,.jpeg,.png"
+                    accept=".pdf,.jpg,.jpeg,.png,.jfif"
                     onChange={async (e) => {
                       const file = e.target.files[0];
                       if (file) {
@@ -673,7 +673,7 @@ function BankDetails() {
                   <input 
                     type="file"
                     className="form-control"
-                    accept=".pdf,.jpg,.jpeg,.png"
+                    accept=".pdf,.jpg,.jpeg,.png,.jfif"
                     onChange={async (e) => {
                       const file = e.target.files[0];
                       if (file) {

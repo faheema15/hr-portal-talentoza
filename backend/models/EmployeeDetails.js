@@ -134,15 +134,20 @@ class EmployeeDetails {
   }
 
   // Get all employees with basic info
-  static async findAll() {
-    const query = `
-      SELECT 
+  static async findAll(includeDeleted = true) {
+  let query = `
+    SELECT 
       ed.emp_id,
       ed.user_id,
       ed.full_name,
       ed.photo_url,
       ed.contact1,
+      COALESCE(ed.email1, u.email) AS email,
       ed.email1,
+      ed.email2,
+      ed.is_deleted,
+      ed.last_working_date,
+      ed.reason_for_leaving,
       u.id as user_id_from_users,
       u.name as user_name,
       u.email as user_email,
@@ -155,18 +160,25 @@ class EmployeeDetails {
     FROM employee_details ed
     LEFT JOIN users u ON ed.user_id = u.id
     LEFT JOIN departments d ON ed.department_id = d.id
-    LEFT JOIN pending_signups ps ON ed.emp_id = ps.emp_id 
-    ORDER BY ed.created_at DESC
-    `;
-    const result = await pool.query(query);
-    return result.rows;
+    LEFT JOIN pending_signups ps ON ed.emp_id = ps.emp_id
+  `;
+
+  if (!includeDeleted) {
+    query += ` WHERE ed.is_deleted = false`;
   }
+
+  query += ` ORDER BY ed.created_at DESC`;
+
+  const result = await pool.query(query);
+  return result.rows;
+}
 
   // Get employee by emp_id with all details
   static async findByEmpId(emp_id) {
     const query = `
       SELECT 
         ed.*,
+        COALESCE(ed.email1, u.email) AS email,
         u.name as user_name,
         u.email as user_email,
         u.role as user_role,
@@ -269,11 +281,28 @@ static async update(emp_id, data) {
 }
 
   // Delete employee (cascades to related records)
-  static async delete(emp_id) {
-    const query = 'DELETE FROM employee_details WHERE emp_id = $1 RETURNING *';
-    const result = await pool.query(query, [emp_id]);
-    return result.rows[0];
-  }
+  static async delete(emp_id, data) {
+  const query = `
+  UPDATE employee_details
+  SET 
+    is_deleted = true,
+    last_working_date = $1,
+    reason_for_leaving = $2
+  WHERE emp_id = $3 AND is_deleted = false
+  RETURNING *
+`;
+
+  const values = [
+  data.last_working_date || null,
+  data.reason_for_leaving || null,
+  emp_id
+];
+  const result = await pool.query(query, values);
+  if (result.rows.length === 0) {
+  throw new Error("Employee already deleted or not found");
+}
+  return result.rows[0];
+}  
 }
 
 module.exports = EmployeeDetails;

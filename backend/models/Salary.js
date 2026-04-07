@@ -12,7 +12,7 @@ static async create(data) {
     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
     RETURNING *
   `;
-  const values = [
+  const values = [ 
     data.empId,
     data.salaryMonth || null,
     parseFloat(data.basicSalary) || 0,
@@ -37,28 +37,54 @@ static async create(data) {
 
   // Get all salary records
   static async findAll() {
-    const query = 'SELECT * FROM salary ORDER BY created_at DESC';
+    const query = `
+  SELECT s.*, ed.is_deleted
+  FROM salary s
+  JOIN employee_details ed ON s.emp_id = ed.emp_id
+  WHERE ed.is_deleted = false
+  ORDER BY s.created_at DESC
+`;
     const result = await pool.query(query);
     return result.rows;
   }
 
   // Get salary by emp_id
   static async findByEmpId(empId) {
-    const query = 'SELECT * FROM salary WHERE emp_id = $1';
+    const query = `
+  SELECT s.* 
+  FROM salary s
+  JOIN employee_details ed ON s.emp_id = ed.emp_id
+  WHERE s.emp_id = $1
+  AND ed.is_deleted = false
+`;
     const result = await pool.query(query, [empId]);
     return result.rows[0];
   }
 
   // Get salary records by emp_id (for history)
   static async findAllByEmpId(empId) {
-    const query = 'SELECT * FROM salary WHERE emp_id = $1 ORDER BY salary_month DESC';
+    const query = `
+  SELECT s.*
+  FROM salary s
+  JOIN employee_details ed ON s.emp_id = ed.emp_id
+  WHERE s.emp_id = $1
+  AND ed.is_deleted = false
+  ORDER BY s.salary_month DESC
+`;
     const result = await pool.query(query, [empId]);
     return result.rows;
   }
 
   // Get salary by month
   static async findByMonth(empId, month) {
-    const query = 'SELECT * FROM salary WHERE emp_id = $1 AND salary_month = $2';
+    const query = `
+  SELECT s.*
+  FROM salary s
+  JOIN employee_details ed ON s.emp_id = ed.emp_id
+  WHERE s.emp_id = $1 
+  AND s.salary_month = $2
+  AND ed.is_deleted = false
+`;
     const result = await pool.query(query, [empId, month]);
     return result.rows[0];
   }

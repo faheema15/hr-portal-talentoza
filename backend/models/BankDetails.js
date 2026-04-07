@@ -45,14 +45,16 @@ class BankDetails {
 
   // Get all bank details
   static async findAll() {
-    const query = `
-      SELECT 
-        bd.*,
-        ed.full_name as emp_name
-      FROM bank_details bd
-      LEFT JOIN employee_details ed ON bd.emp_id = ed.emp_id
-      ORDER BY bd.created_at DESC
-    `;
+   const query = `
+  SELECT 
+    bd.*,
+    ed.full_name as emp_name,
+    ed.is_deleted
+  FROM bank_details bd
+  LEFT JOIN employee_details ed ON bd.emp_id = ed.emp_id
+  WHERE ed.is_deleted = false
+  ORDER BY bd.created_at DESC
+`;
     const result = await pool.query(query);
     return result.rows;
   }
@@ -60,12 +62,15 @@ class BankDetails {
   // Get bank details by emp_id
   static async findByEmpId(empId) {
     const query = `
-      SELECT * FROM bank_details 
-      WHERE emp_id = $1 
-      AND (end_date IS NULL OR end_date > CURRENT_DATE)
-      ORDER BY is_primary DESC, created_at DESC
-      LIMIT 1
-    `;
+  SELECT bd.* 
+  FROM bank_details bd
+  JOIN employee_details ed ON bd.emp_id = ed.emp_id
+  WHERE bd.emp_id = $1
+  AND ed.is_deleted = false
+  AND (bd.end_date IS NULL OR bd.end_date > CURRENT_DATE)
+  ORDER BY bd.is_primary DESC, bd.created_at DESC
+  LIMIT 1
+`;
     const result = await pool.query(query, [empId]);
     return result.rows[0];
   }
