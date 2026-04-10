@@ -171,27 +171,83 @@ const Project = {
 
   // Update project
   update: async (id, projectData) => {
-    try {
-      const { project_name, start_date, end_date, status, manager_id } = projectData;
-      const query = `
-        UPDATE projects 
-        SET name = $1, start_date = $2, end_date = $3, status = $4, manager_id = $5
-        WHERE id = $6
-        RETURNING 
-          id as project_id,
-          name as project_name,
-          start_date,
-          end_date,
-          status,
-          manager_id as project_head_id,
-          updated_at
-      `;
-      const result = await db.query(query, [project_name, start_date, end_date, status, manager_id, id]);
-      return result.rows[0];
-    } catch (error) {
-      throw error;
-    }
-  },
+  try {
+    const {
+      project_name,
+      project_code,
+      description,
+      client_name,
+      client_contact,
+      start_date,
+      end_date,
+      budget,
+      actual_cost,
+      status,
+      priority,
+      manager_id,
+      technologies,
+      remarks
+    } = projectData;
+
+    const query = `
+      UPDATE projects SET
+        name = $1,
+        project_code = $2,
+        description = $3,
+        client_name = $4,
+        client_contact = $5,
+        start_date = $6,
+        end_date = $7,
+        budget = $8,
+        actual_cost = $9,
+        status = $10,
+        priority = $11,
+        manager_id = $12,
+        technologies = $13,
+        remarks = $14
+      WHERE id = $15
+      RETURNING 
+        id as project_id,
+        name as project_name,
+        project_code,
+        description,
+        client_name,
+        client_contact,
+        start_date,
+        end_date,
+        budget,
+        actual_cost,
+        status,
+        priority,
+        manager_id as project_head_id,
+        technologies,
+        remarks,
+        updated_at
+    `;
+
+    const result = await db.query(query, [
+      project_name,
+      project_code,
+      description,
+      client_name,
+      client_contact,
+      start_date,
+      end_date,
+      budget,
+      actual_cost,
+      status,
+      priority,
+      manager_id,
+      technologies,
+      remarks,
+      id
+    ]);
+
+    return result.rows[0];
+  } catch (error) {
+    throw error;
+  }
+},
 
   // Delete project
   delete: async (id) => {

@@ -319,9 +319,8 @@ function ProjectDetail() {
                   {project.project_code ? `Project Code: ${project.project_code} | ` : ''}
                   Project ID: {project.project_id}
                 </p>
-              </div>
-              <div className="d-flex gap-2 align-items-center">
-                <span className={`badge ${getStatusBadgeClass(project.status)} fs-6`}>
+                <div className="d-flex gap-2 flex-wrap" style={{ marginTop: "5px" }}>
+                 <span className={`badge ${getStatusBadgeClass(project.status)} fs-6`}>
                   {project.status}
                 </span>
                 {project.priority && (
@@ -329,7 +328,10 @@ function ProjectDetail() {
                     {project.priority} Priority
                   </span>
                 )}
-                {canEdit && (
+                </div>
+              </div>
+              <div className="d-flex gap-2 align-items-center">
+      {canEdit && (
                   <button 
                     className="btn btn-outline-primary btn-sm"
                     onClick={handleEditProject}

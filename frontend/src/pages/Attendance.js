@@ -94,7 +94,10 @@ const fetchAttendanceForMonth = useCallback((month, year) => {
         });
         
         console.log('✅ Attendance map created:', attendanceMap);
-        setAttendanceData(attendanceMap);
+        setAttendanceData(prev => ({
+  ...prev,
+  ...attendanceMap
+}));
       } else {
         console.error('❌ No attendance data in response');
         setAttendanceData({});
@@ -457,6 +460,8 @@ const calculateStats = () => {
       totalWorkingDays++;
       if (status === "present") {
         daysPresent++;
+        } else if (status === "half_day") {
+  daysPresent += 0.5;
       } else if (status === "absent") {
         daysLeave++;
       }
@@ -682,7 +687,7 @@ const calculateStats = () => {
                       </div>
                       <div className="mt-3 text-center">
                         <small className="text-muted">
-                          {isHR ? "Click on a weekday to toggle: Present ↔ Absent" : "Contact HR to update attendance"}
+                          {isHR ? "Click on a weekday to toggle: Present → Half Day → Absent" : "Contact HR to update attendance"}
                         </small>
                       </div>
                     </div>

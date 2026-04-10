@@ -703,6 +703,33 @@ const handleDocumentUpdate = async (updateData) => {
       alert("Error adding education details!");
     }
   };
+  const handleDeleteEducation = async (id) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this education record?");
+  if (!confirmDelete) return;
+
+  try {
+    const token = sessionStorage.getItem('token');
+
+    const response = await fetch(`${API_BASE_URL}/api/education/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      // ✅ instantly update UI
+      setEducationDetails(prev => prev.filter(item => item.id !== id));
+    } else {
+      alert(result.message || "Failed to delete");
+    }
+  } catch (error) {
+    console.error(error);
+    alert("Error deleting education record");
+  }
+};
 
   // Handlers for Certification
   const handleAddCertification = async (e) => {
@@ -821,6 +848,34 @@ const handleDocumentUpdate = async (updateData) => {
       alert("Error adding research paper details!");
     }
   };
+
+  const handleDeleteResearchPaper = async (id) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this research paper?");
+  if (!confirmDelete) return;
+
+  try {
+    const token = sessionStorage.getItem('token');
+
+    const response = await fetch(`${API_BASE_URL}/api/research-papers/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      // ✅ remove from UI instantly
+      setResearchPapers(prev => prev.filter(paper => paper.id !== id));
+    } else {
+      alert(result.message || "Failed to delete");
+    }
+  } catch (error) {
+    console.error(error);
+    alert("Error deleting research paper");
+  }
+};
 
   // --- END CRUD HANDLERS ---
 
@@ -1156,16 +1211,17 @@ const handleDocumentUpdate = async (updateData) => {
                         className="img-thumbnail rounded-circle"
                         style={{ width: "200px", height: "250px", objectFit: "cover", borderRadius: "20px" }}
                       />
-                      <div className="mt-3">
-                        <label className="form-label fw-semibold">Upload Photo</label>
-                        <input 
-                          type="file" 
-                          className="form-control mx-auto"
-                          style={{ maxWidth: "400px" }}
-                          accept="image/*"
-                          onChange={handleFileChange}
-                        />
-                      </div>
+                      <div className="text-center mt-3">
+  <label className="btn btn-outline-primary">
+    {formData.photo_url ? "Change Photo" : "Upload Photo"}
+    <input
+      type="file"
+      hidden
+      accept="image/*"
+      onChange={handleFileChange}
+    />
+  </label>
+</div>
                     </div>
                   </div>
 
@@ -1560,78 +1616,108 @@ const handleDocumentUpdate = async (updateData) => {
 
                   {/* ID CARDS UPLOAD SECTION */}
                   <div className="row g-3 mb-5">
-                    <div className="col-12">
-                      <h5 className="fw-bold text-primary mb-4">Identity Documents</h5>
-                    </div>
+  <div className="col-12">
+    <h5 className="fw-bold text-primary mb-4">Identity Documents</h5>
+  </div>
 
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold">Aadhar Card</label>
-                      <input 
-                        type="file"
-                        className="form-control"
-                        accept=".pdf,.jpg,.jpeg,.png,.jfif"
-                        onChange={async (e) => {
-                          const file = e.target.files[0];
-                          if (file) {
-                            const url = await handleFileUpload(file, 'aadhar');
-                            if (url) {
-                              setFormData(prev => ({ ...prev, aadhar_document_url: url }));
-                              handleDocumentUpdate({ aadhar_document_url: url });
-                            }
-                          }
-                        }}
-                        disabled={uploadingFile}
-                      />
-                      {uploadProgress['aadhar'] !== undefined && (
-                        <div className="progress mt-2" style={{height: '5px'}}>
-                          <div className="progress-bar" style={{width: `${uploadProgress['aadhar']}%`}}></div>
-                        </div>
-                      )}
-                      {formData.aadhar_document_url && (
-                        <button 
-                          type="button"
-                          className="btn btn-sm btn-outline-primary mt-2"
-                          onClick={() => handleViewDocument(formData.aadhar_document_url)}
-                        >
-                          <i className="bi bi-eye me-1"></i> View Aadhar
-                        </button>
-                      )}
-                    </div>
+  {/* AADHAR CARD */}
+  <div className="col-md-6">
+    <label className="form-label fw-semibold">Aadhar Card</label>
 
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold">PAN Card</label>
-                      <input 
-                        type="file"
-                        className="form-control"
-                        accept=".pdf,.jpg,.jpeg,.png,.jfif"
-                        onChange={async (e) => {
-                          const file = e.target.files[0];
-                          if (file) {
-                            const url = await handleFileUpload(file, 'pan');
-                            if (url) {
-                              setFormData(prev => ({ ...prev, pan_document_url: url }));
-                              handleDocumentUpdate({ pan_document_url: url });
-                            }
-                          }
-                        }}
-                        disabled={uploadingFile}
-                      />
-                      {uploadProgress['pan'] !== undefined && (
-                        <div className="progress mt-2" style={{height: '5px'}}>
-                          <div className="progress-bar" style={{width: `${uploadProgress['pan']}%`}}></div>
-                        </div>
-                      )}
-                      {formData.pan_document_url && (
-                        <button 
-                          type="button"
-                          className="btn btn-sm btn-outline-primary mt-2"
-                          onClick={() => handleViewDocument(formData.pan_document_url)}
-                        >
-                          <i className="bi bi-eye me-1"></i> View PAN Card
-                        </button>
-                      )}
-                    </div>
-                  </div>
+    <div className="mt-2">
+      <label className="btn btn-outline-primary">
+        {formData.aadhar_document_url ? "Change File" : "Choose File"}
+
+        <input
+          type="file"
+          hidden
+          accept=".pdf,.jpg,.jpeg,.png,.jfif"
+          onChange={async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+              const url = await handleFileUpload(file, 'aadhar');
+              if (url) {
+                setFormData(prev => ({ ...prev, aadhar_document_url: url }));
+                handleDocumentUpdate({ aadhar_document_url: url });
+              }
+            }
+          }}
+          disabled={uploadingFile}
+        />
+      </label>
+    </div>
+
+    {/* Progress Bar */}
+    {uploadProgress['aadhar'] !== undefined && (
+      <div className="progress mt-2" style={{ height: '5px' }}>
+        <div
+          className="progress-bar"
+          style={{ width: `${uploadProgress['aadhar']}%` }}
+        ></div>
+      </div>
+    )}
+
+    {/* View Button */}
+    {formData.aadhar_document_url && (
+      <button
+        type="button"
+        className="btn btn-sm btn-outline-primary mt-2"
+        onClick={() => handleViewDocument(formData.aadhar_document_url)}
+      >
+        <i className="bi bi-eye me-1"></i> View Aadhar
+      </button>
+    )}
+  </div>
+
+  {/* PAN CARD */}
+  <div className="col-md-6">
+    <label className="form-label fw-semibold">PAN Card</label>
+
+    <div className="mt-2">
+      <label className="btn btn-outline-primary">
+        {formData.pan_document_url ? "Change File" : "Choose File"}
+
+        <input
+          type="file"
+          hidden
+          accept=".pdf,.jpg,.jpeg,.png,.jfif"
+          onChange={async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+              const url = await handleFileUpload(file, 'pan');
+              if (url) {
+                setFormData(prev => ({ ...prev, pan_document_url: url }));
+                handleDocumentUpdate({ pan_document_url: url });
+              }
+            }
+          }}
+          disabled={uploadingFile}
+        />
+      </label>
+    </div>
+
+    {/* Progress Bar */}
+    {uploadProgress['pan'] !== undefined && (
+      <div className="progress mt-2" style={{ height: '5px' }}>
+        <div
+          className="progress-bar"
+          style={{ width: `${uploadProgress['pan']}%` }}
+        ></div>
+      </div>
+    )}
+
+    {/* View Button */}
+    {formData.pan_document_url && (
+      <button
+        type="button"
+        className="btn btn-sm btn-outline-primary mt-2"
+        onClick={() => handleViewDocument(formData.pan_document_url)}
+      >
+        <i className="bi bi-eye me-1"></i> View PAN Card
+      </button>
+    )}
+  </div>
+</div>
 
                   {/* EDUCATION SECTION */}
                   <div className="row mb-5">
@@ -1649,6 +1735,7 @@ const handleDocumentUpdate = async (updateData) => {
                                 <th>Year of Passing</th>
                                 <th>CGPA/Percentage</th>
                                 <th>Document</th>
+                                <th>Actions</th> 
                               </tr>
                             </thead>
                             <tbody>
@@ -1671,6 +1758,16 @@ const handleDocumentUpdate = async (updateData) => {
                                       <span className="text-muted">No document</span>
                                     )}
                                   </td>
+                                  {/* ✅ DELETE BUTTON */}
+      <td>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-danger"
+          onClick={() => handleDeleteEducation(edu.id)}
+        >
+         Delete
+        </button>
+      </td>
                                 </tr>
                               ))}
                             </tbody>
@@ -2022,6 +2119,7 @@ const handleDocumentUpdate = async (updateData) => {
                                 <th>Publication Date</th>
                                 <th>DOI Link</th>
                                 <th>Paper</th>
+                                 <th>Actions</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -2044,6 +2142,16 @@ const handleDocumentUpdate = async (updateData) => {
                                       </a>
                                     )}
                                   </td>
+                                   {/* ✅ DELETE BUTTON */}
+      <td>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-danger"
+          onClick={() => handleDeleteResearchPaper(paper.id)}
+        >
+          Delete
+        </button>
+      </td>
                                 </tr>
                               ))}
                             </tbody>

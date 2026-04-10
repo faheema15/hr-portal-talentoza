@@ -513,7 +513,7 @@ exports.initializeEmployeeAttendance = async (req, res) => {
         status = CASE 
           WHEN EXTRACT(DOW FROM attendance_records.attendance_date) = 0 THEN 'leave'
           WHEN attendance_records.attendance_date = ANY($2::date[]) THEN 'leave'
-          ELSE 'present'
+          ELSE attendance_records.status
         END,
         updated_at = CURRENT_TIMESTAMP
       RETURNING *

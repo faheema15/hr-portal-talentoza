@@ -541,188 +541,203 @@ function BankDetails() {
                 </div>
               </div>
 
-              {/* BANK DOCUMENTS SECTION - ADD THIS ENTIRE SECTION */}
-              <div className="row g-3 mb-4">
-                <div className="col-12 mt-4">
-                  <h5 className="fw-bold text-primary mb-3">📄 Bank Documents</h5>
-                  {isHR ? (
-                    <small className="text-success">
-                      <i className="bi bi-pencil me-1"></i>
-                      You can upload these documents
-                    </small>
-                  ) : (
-                    <small className="text-muted">View only</small>
-                  )}
-                </div>
-                
-                {/* PAN Card */}
-                <div className="col-md-4">
-                  <label className="form-label fw-semibold">PAN Card</label>
-                  <input 
-                    type="file"
-                    className="form-control"
-                    accept=".pdf,.jpg,.jpeg,.png,.jfif"
-                    onChange={async (e) => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        if (file.size > 5 * 1024 * 1024) {
-                          alert('File size must be less than 5MB');
-                          return;
-                        }
-                        
-                        try {
-                          const uploadFormData = new FormData();
-                          uploadFormData.append('file', file);
-                          uploadFormData.append('fieldName', 'pan_card');
+              {/* BANK DOCUMENTS SECTION */}
+<div className="row g-3 mb-4">
+  <div className="col-12 mt-4">
+    <h5 className="fw-bold text-primary mb-3">📄 Bank Documents</h5>
+    {isHR ? (
+      <small className="text-success">
+        <i className="bi bi-pencil me-1"></i>
+        You can upload these documents
+      </small>
+    ) : (
+      <small className="text-muted">View only</small>
+    )}
+  </div>
 
-                          const token = sessionStorage.getItem('token');
-                          const response = await fetch(`${API_BASE_URL}/api/upload/document`, {
-                            method: 'POST',
-                            headers: {
-                              'Authorization': `Bearer ${token}`
-                            },
-                            body: uploadFormData
-                          });
+  {/* PAN CARD */}
+  <div className="col-md-4">
+    <label className="form-label fw-semibold">PAN Card</label>
 
-                          if (response.ok) {
-                            const result = await response.json();
-                            setFormData(prev => ({ ...prev, panCard: result.data.file_url }));
-                          } else {
-                            const errorData = await response.json();
-                            alert(`Error uploading file: ${errorData.message}`);
-                          }
-                        } catch (error) {
-                          console.error('Error uploading file:', error);
-                          alert('Error uploading file. Please try again.');
-                        }
-                      }
-                    }}
-                    disabled={!isHR}
-                  />
-                  <small className="text-muted">Upload PDF or Image (Max 5MB)</small>
-                  {formData.panCard && (
-                    <button 
-                      type="button"
-                      className="btn btn-sm btn-outline-primary mt-2"
-                      onClick={() => handleViewDocument(formData.panCard)}
-                    >
-                      <i className="bi bi-eye me-1"></i> View PAN Card
-                    </button>
-                  )}
-                </div>
-                
-                {/* Cancelled Cheque */}
-                <div className="col-md-4">
-                  <label className="form-label fw-semibold">Cancelled Cheque</label>
-                  <input 
-                    type="file"
-                    className="form-control"
-                    accept=".pdf,.jpg,.jpeg,.png,.jfif"
-                    onChange={async (e) => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        if (file.size > 5 * 1024 * 1024) {
-                          alert('File size must be less than 5MB');
-                          return;
-                        }
-                        
-                        try {
-                          const uploadFormData = new FormData();
-                          uploadFormData.append('file', file);
-                          uploadFormData.append('fieldName', 'cancelled_cheque');
+    <div className="mt-2">
+      <label className="btn btn-outline-primary">
+        {formData.panCard ? "Change File" : "Choose File"}
 
-                          const token = sessionStorage.getItem('token');
-                          const response = await fetch(`${API_BASE_URL}/api/upload/document`, {
-                            method: 'POST',
-                            headers: {
-                              'Authorization': `Bearer ${token}`
-                            },
-                            body: uploadFormData
-                          });
+        <input
+          type="file"
+          hidden
+          accept=".pdf,.jpg,.jpeg,.png,.jfif"
+          disabled={!isHR}
+          onChange={async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
 
-                          if (response.ok) {
-                            const result = await response.json();
-                            setFormData(prev => ({ ...prev, cancelledCheque: result.data.file_url }));
-                          } else {
-                            const errorData = await response.json();
-                            alert(`Error uploading file: ${errorData.message}`);
-                          }
-                        } catch (error) {
-                          console.error('Error uploading file:', error);
-                          alert('Error uploading file. Please try again.');
-                        }
-                      }
-                    }}
-                    disabled={!isHR}
-                  />
-                  <small className="text-muted">Upload PDF or Image (Max 5MB)</small>
-                  {formData.cancelledCheque && (
-                    <button 
-                      type="button"
-                      className="btn btn-sm btn-outline-primary mt-2"
-                      onClick={() => handleViewDocument(formData.cancelledCheque)}
-                    >
-                      <i className="bi bi-eye me-1"></i> View Cancelled Cheque
-                    </button>
-                  )}
-                </div>
-                
-                {/* Bank Passbook */}
-                <div className="col-md-4">
-                  <label className="form-label fw-semibold">Bank Passbook</label>
-                  <input 
-                    type="file"
-                    className="form-control"
-                    accept=".pdf,.jpg,.jpeg,.png,.jfif"
-                    onChange={async (e) => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        if (file.size > 5 * 1024 * 1024) {
-                          alert('File size must be less than 5MB');
-                          return;
-                        }
-                        
-                        try {
-                          const uploadFormData = new FormData();
-                          uploadFormData.append('file', file);
-                          uploadFormData.append('fieldName', 'bank_passbook');
+            if (file.size > 5 * 1024 * 1024) {
+              alert('File size must be less than 5MB');
+              return;
+            }
 
-                          const token = sessionStorage.getItem('token');
-                          const response = await fetch(`${API_BASE_URL}/api/upload/document`, {
-                            method: 'POST',
-                            headers: {
-                              'Authorization': `Bearer ${token}`
-                            },
-                            body: uploadFormData
-                          });
+            try {
+              const uploadFormData = new FormData();
+              uploadFormData.append('file', file);
+              uploadFormData.append('fieldName', 'pan_card');
 
-                          if (response.ok) {
-                            const result = await response.json();
-                            setFormData(prev => ({ ...prev, bankPassbook: result.data.file_url }));
-                          } else {
-                            const errorData = await response.json();
-                            alert(`Error uploading file: ${errorData.message}`);
-                          }
-                        } catch (error) {
-                          console.error('Error uploading file:', error);
-                          alert('Error uploading file. Please try again.');
-                        }
-                      }
-                    }}
-                    disabled={!isHR}
-                  />
-                  <small className="text-muted">Upload PDF or Image (Max 5MB)</small>
-                  {formData.bankPassbook && (
-                    <button 
-                      type="button"
-                      className="btn btn-sm btn-outline-primary mt-2"
-                      onClick={() => handleViewDocument(formData.bankPassbook)}
-                    >
-                      <i className="bi bi-eye me-1"></i> View Bank Passbook
-                    </button>
-                  )}
-                </div>
-              </div>
+              const token = sessionStorage.getItem('token');
+              const response = await fetch(`${API_BASE_URL}/api/upload/document`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: uploadFormData
+              });
+
+              if (response.ok) {
+                const result = await response.json();
+                setFormData(prev => ({ ...prev, panCard: result.data.file_url }));
+              } else {
+                const err = await response.json();
+                alert(err.message);
+              }
+            } catch (err) {
+              console.error(err);
+              alert("Upload failed");
+            }
+          }}
+        />
+      </label>
+    </div>
+
+    {formData.panCard && (
+      <button
+        type="button"
+        className="btn btn-sm btn-outline-primary mt-2"
+        onClick={() => handleViewDocument(formData.panCard)}
+      >
+        👁 View PAN
+      </button>
+    )}
+  </div>
+
+  {/* CANCELLED CHEQUE */}
+  <div className="col-md-4">
+    <label className="form-label fw-semibold">Cancelled Cheque</label>
+
+    <div className="mt-2">
+      <label className="btn btn-outline-primary">
+        {formData.cancelledCheque ? "Change File" : "Choose File"}
+
+        <input
+          type="file"
+          hidden
+          accept=".pdf,.jpg,.jpeg,.png,.jfif"
+          disabled={!isHR}
+          onChange={async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (file.size > 5 * 1024 * 1024) {
+              alert('File size must be less than 5MB');
+              return;
+            }
+
+            try {
+              const uploadFormData = new FormData();
+              uploadFormData.append('file', file);
+              uploadFormData.append('fieldName', 'cancelled_cheque');
+
+              const token = sessionStorage.getItem('token');
+              const response = await fetch(`${API_BASE_URL}/api/upload/document`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: uploadFormData
+              });
+
+              if (response.ok) {
+                const result = await response.json();
+                setFormData(prev => ({ ...prev, cancelledCheque: result.data.file_url }));
+              } else {
+                const err = await response.json();
+                alert(err.message);
+              }
+            } catch (err) {
+              console.error(err);
+              alert("Upload failed");
+            }
+          }}
+        />
+      </label>
+    </div>
+
+    {formData.cancelledCheque && (
+      <button
+        type="button"
+        className="btn btn-sm btn-outline-primary mt-2"
+        onClick={() => handleViewDocument(formData.cancelledCheque)}
+      >
+        👁 View Cheque
+      </button>
+    )}
+  </div>
+
+  {/* BANK PASSBOOK */}
+  <div className="col-md-4">
+    <label className="form-label fw-semibold">Bank Passbook</label>
+
+    <div className="mt-2">
+      <label className="btn btn-outline-primary">
+        {formData.bankPassbook ? "Change File" : "Choose File"}
+
+        <input
+          type="file"
+          hidden
+          accept=".pdf,.jpg,.jpeg,.png,.jfif"
+          disabled={!isHR}
+          onChange={async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (file.size > 5 * 1024 * 1024) {
+              alert('File size must be less than 5MB');
+              return;
+            }
+
+            try {
+              const uploadFormData = new FormData();
+              uploadFormData.append('file', file);
+              uploadFormData.append('fieldName', 'bank_passbook');
+
+              const token = sessionStorage.getItem('token');
+              const response = await fetch(`${API_BASE_URL}/api/upload/document`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: uploadFormData
+              });
+
+              if (response.ok) {
+                const result = await response.json();
+                setFormData(prev => ({ ...prev, bankPassbook: result.data.file_url }));
+              } else {
+                const err = await response.json();
+                alert(err.message);
+              }
+            } catch (err) {
+              console.error(err);
+              alert("Upload failed");
+            }
+          }}
+        />
+      </label>
+    </div>
+
+    {formData.bankPassbook && (
+      <button
+        type="button"
+        className="btn btn-sm btn-outline-primary mt-2"
+        onClick={() => handleViewDocument(formData.bankPassbook)}
+      >
+        👁 View Passbook
+      </button>
+    )}
+  </div>
+</div>
 
               {/* Action Buttons - Only for HR */}
               {isHR && (

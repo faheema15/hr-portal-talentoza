@@ -64,6 +64,10 @@ function Salary() {
     }
   };
 
+  const roundTo2 = (num) => {
+  return Math.round((num + Number.EPSILON) * 100) / 100;
+};
+
   useEffect(() => {
     setHasChanges(JSON.stringify(formData) !== JSON.stringify(originalData));
   }, [formData, originalData]);
@@ -148,15 +152,17 @@ function Salary() {
 
   // Auto-calculate Gross Salary
   useEffect(() => {
-    const basic = parseFloat(formData.basicSalary) || 0;
-    const hra = parseFloat(formData.hra) || 0;
-    const conveyance = parseFloat(formData.conveyanceAllowance) || 0;
-    const medical = parseFloat(formData.medicalAllowance) || 0;
-    const special = parseFloat(formData.specialAllowance) || 0;
-    const other = parseFloat(formData.otherAllowances) || 0;
+    const basic = Number(formData.basicSalary) || 0;
+    const hra = Number(formData.hra) || 0;
+    const conveyance = Number(formData.conveyanceAllowance) || 0;
+    const medical = Number(formData.medicalAllowance) || 0;
+    const special = Number(formData.specialAllowance) || 0;
+    const other = Number(formData.otherAllowances) || 0;
 
     const gross = basic + hra + conveyance + medical + special + other;
-    setFormData(prev => ({ ...prev, grossSalary: gross.toFixed(2) }));
+if (formData.grossSalary !== gross) {
+    setFormData(prev => ({ ...prev, grossSalary: gross }));
+  }
   }, [
     formData.basicSalary,
     formData.hra,
@@ -168,12 +174,14 @@ function Salary() {
 
   // Auto-calculate Total Deductions
   useEffect(() => {
-    const pf = parseFloat(formData.providentFund) || 0;
-    const pt = parseFloat(formData.professionalTax) || 0;
-    const it = parseFloat(formData.incomeTax) || 0;
+    const pf = Number(formData.providentFund) || 0;
+    const pt = Number(formData.professionalTax) || 0;
+    const it = Number(formData.incomeTax) || 0;
 
     const total = pf + pt + it;
-    setFormData(prev => ({ ...prev, totalDeductions: total.toFixed(2) }));
+if (formData.totalDeductions !== total) {
+    setFormData(prev => ({ ...prev, totalDeductions: total }));
+  }
   }, [
     formData.providentFund,
     formData.professionalTax,
@@ -182,17 +190,23 @@ function Salary() {
 
   // Auto-calculate Net Salary
   useEffect(() => {
-    const gross = parseFloat(formData.grossSalary) || 0;
-    const deductions = parseFloat(formData.totalDeductions) || 0;
+    const gross = Number(formData.grossSalary) || 0;
+    const deductions = Number(formData.totalDeductions) || 0;
 
     const net = gross - deductions;
-    setFormData(prev => ({ ...prev, netSalary: net.toFixed(2) }));
+if (formData.netSalary !== net) {
+    setFormData(prev => ({ ...prev, netSalary: net }));
+  }
   }, [formData.grossSalary, formData.totalDeductions]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  const { name, value } = e.target;
+
+  setFormData(prev => ({
+    ...prev,
+    [name]: value === "" ? "" : Number(value)
+  }));
+};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -261,8 +275,8 @@ function Salary() {
   };
 
   const formatCurrency = (value) => {
-    const num = parseFloat(value);
-    return isNaN(num) ? "₹0.00" : `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const num = Number(value);
+    return isNaN(num) ? "₹0" : `₹${num.toLocaleString('en-IN')}`;
   };
 
   // Loading state
@@ -477,7 +491,7 @@ function Salary() {
                       value={formData.basicSalary}
                       onChange={handleChange}
                       placeholder="0.00"
-                      step="0.01"
+                      step="1"
                       min="0"
                     />
                   </div>
@@ -493,7 +507,7 @@ function Salary() {
                       value={formData.hra}
                       onChange={handleChange}
                       placeholder="0.00"
-                      step="0.01"
+                      step="1"
                       min="0"
                     />
                   </div>
@@ -509,7 +523,7 @@ function Salary() {
                       value={formData.conveyanceAllowance}
                       onChange={handleChange}
                       placeholder="0.00"
-                      step="0.01"
+                      step="1"
                       min="0"
                     />
                   </div>
@@ -525,7 +539,7 @@ function Salary() {
                       value={formData.medicalAllowance}
                       onChange={handleChange}
                       placeholder="0.00"
-                      step="0.01"
+                      step="1"
                       min="0"
                     />
                   </div>
@@ -541,7 +555,7 @@ function Salary() {
                       value={formData.specialAllowance}
                       onChange={handleChange}
                       placeholder="0.00"
-                      step="0.01"
+                      step="1"
                       min="0"
                     />
                   </div>
@@ -557,7 +571,7 @@ function Salary() {
                       value={formData.otherAllowances}
                       onChange={handleChange}
                       placeholder="0.00"
-                      step="0.01"
+                      step="1"
                       min="0"
                     />
                   </div>
@@ -591,7 +605,7 @@ function Salary() {
                       value={formData.providentFund}
                       onChange={handleChange}
                       placeholder="0.00"
-                      step="0.01"
+                      step="1"
                       min="0"
                     />
                   </div>
@@ -607,7 +621,7 @@ function Salary() {
                       value={formData.professionalTax}
                       onChange={handleChange}
                       placeholder="0.00"
-                      step="0.01"
+                      step="1"
                       min="0"
                     />
                   </div>
@@ -623,7 +637,7 @@ function Salary() {
                       value={formData.incomeTax}
                       onChange={handleChange}
                       placeholder="0.00"
-                      step="0.01"
+                      step="1"
                       min="0"
                     />
                   </div>
@@ -639,7 +653,7 @@ function Salary() {
                       value={formData.otherDeductions}
                       onChange={handleChange}
                       placeholder="0.00"
-                      step="0.01"
+                      step="1"
                       min="0"
                     />
                   </div>

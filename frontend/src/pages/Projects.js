@@ -287,14 +287,7 @@ const totalPages = Math.ceil(filteredProjects.length / recordsPerPage) || 1;
                               >
                                 View
                               </button>
-                              {canEdit && (
-                                <button 
-                                  className="btn btn-outline-primary"
-                                  onClick={() => handleEdit(project)}
-                                >
-                                  Edit
-                                </button>
-                              )}
+                             
                               {currentUser?.role === 'HR' && (
                                 <button 
                                   className="btn btn-outline-danger"
