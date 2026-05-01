@@ -11,6 +11,7 @@ function EmployeeDetails() {
   const [formData, setFormData] = useState({
     // Required fields for HR when creating new employee
     emp_id: "",
+     is_deleted: false,  
     user_role: "Employee",
     
     // EMPLOYEE DETAILS
@@ -136,6 +137,7 @@ const [deleteData, setDeleteData] = useState({
     
     const employeeData = {
       emp_id: data.emp_id || "",
+      is_deleted: data.is_deleted || false,  
       photo_url: data.photo_url || null,
       full_name: data.full_name || data.user_id || "",
       designation: data.designation || "",
@@ -2272,7 +2274,7 @@ const handleDocumentUpdate = async (updateData) => {
   <div style={{ display: "flex", justifyContent: "space-between" }}>
     
     
-    {!isNewEmployee && (
+    {!isNewEmployee && !formData.is_deleted && (
       <button
         type="button"
         className="btn btn-danger px-4"

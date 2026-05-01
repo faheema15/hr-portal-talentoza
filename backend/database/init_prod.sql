@@ -88,6 +88,9 @@ CREATE TABLE IF NOT EXISTS employee_details (
     photo_url VARCHAR(500),
     aadhar_document_url VARCHAR(500),
     pan_document_url VARCHAR(500),
+    is_deleted BOOLEAN DEFAULT false,
+    last_working_date DATE,
+    reason_for_leaving TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

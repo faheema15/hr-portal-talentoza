@@ -13,6 +13,7 @@ function EmployeeList({ section }) {
   const [search_term, set_search_term] = useState("");
   const [loading, set_loading] = useState(true);
   const [error, set_error] = useState(null);
+  const [show_all, set_show_all] = useState(false);
   
   // Leave Requests Modal State
   const [show_leave_modal, set_show_leave_modal] = useState(false);
@@ -108,6 +109,52 @@ function EmployeeList({ section }) {
     }
   };
 
+  const fetch_all_employees = async () => {
+  try {
+    set_loading(true);
+    set_error(null);
+    const token = sessionStorage.getItem('token');
+    if (!token) { navigate('/login'); return; }
+
+    const response = await fetch(`${API_BASE_URL}/api/employee-details/hr/list`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+    });
+
+    if (!response.ok) throw new Error(`Server returned ${response.status}`);
+
+    const response_data = await response.json();
+    const data = response_data.data || [];
+
+    const transformed_data = data.map(emp => ({
+      id: emp.emp_id || 'N/A',
+      name: emp.display_name || emp.full_name || emp.user_name || 'N/A',
+      email: emp.email1 || emp.user_email || 'N/A',
+      department: emp.department_name || emp.department || 'Not Assigned',
+      designation: emp.designation || 'N/A',
+      is_deleted: emp.is_deleted || false
+    }));
+
+    set_employees(transformed_data);
+    set_error(null);
+  } catch (err) {
+    set_error(err.message || 'Failed to load employees.');
+    set_employees([]);
+  } finally {
+    set_loading(false);
+  }
+};
+
+const handle_toggle_show_all = () => {
+  const next = !show_all;
+  set_show_all(next);
+  if (next) {
+    fetch_all_employees();
+  } else {
+    fetch_employees();
+  }
+};
+
   // Fetch employees on component mount
   const fetch_employees = async () => {
     try {
@@ -122,7 +169,7 @@ function EmployeeList({ section }) {
         return;
       }
       
-      const response = await fetch(`${API_BASE_URL}/api/employee-details`, {
+      const response = await fetch(`${API_BASE_URL}/api/employee-details/active/list`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -260,6 +307,14 @@ function EmployeeList({ section }) {
                       View all Leave Requests
                     </button>
                   )}
+                  
+                    <button
+                      className={`btn text-nowrap ${show_all ? 'btn-secondary' : 'btn-outline-secondary'}`}
+                      onClick={handle_toggle_show_all}
+                    >
+                      {show_all ? 'Active Only' : 'Show All'}
+                    </button>
+                  
                   {should_show_add_button() && (
                     <button 
                       className="btn btn-primary text-nowrap"
@@ -316,7 +371,12 @@ function EmployeeList({ section }) {
                       filtered_employees.map((employee) => (
                         <tr key={employee.id}>
                           <td className="fw-semibold text-primary">{employee.id}</td>
-                          <td>{employee.name}</td>
+                          <td>
+                          {employee.name}
+                          {employee.is_deleted && (
+                            <span className="badge bg-danger ms-2" style={{fontSize: '10px'}}>Deleted</span>
+                          )}
+                        </td>
                           <td className="text-muted small">{employee.email}</td>
                           <td>
                             <span className="badge bg-light text-dark border">
