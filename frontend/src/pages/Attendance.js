@@ -328,20 +328,6 @@ const handleDateClick = (day) => {
   
   const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   const currentStatus = attendanceData[dateKey];
-  // CHANGE THIS LINE:
-  // const holidays = getGovernmentHolidays(currentYear);
-  // TO THIS:
-  const holidays = governmentHolidays;
-  
-  const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
-  const isSunday = dayOfWeek === 0;
-  const isHoliday = holidays.includes(dateKey);
-
-  // Can't change Sundays or holidays
-  if (isSunday || isHoliday) {
-    alert("Cannot change attendance for Sundays and Government Holidays");
-    return;
-  }
 
   // Cycle: present → half_day → absent → present
   let newStatus;
@@ -366,15 +352,17 @@ const getDateStatus = (day) => {
   return attendanceData[dateKey];
 };
 
+// WITH THIS:
 const getDateColor = (day, status) => {
   const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
 
-  if (dayOfWeek === 0) return "#eab308"; // Sunday
-  if (governmentHolidays.includes(dateKey)) return "#eab308"; // Holiday
-  if (status === "present") return "#22c55e"; // Green
-  if (status === "absent") return "#ef4444"; // Red
-  if (status === "half_day") return "#f97316"; // Orange
+  // Status takes priority — lets HR override Sundays/holidays
+  if (status === "present") return "#22c55e";
+  if (status === "absent") return "#ef4444";
+  if (status === "half_day") return "#f97316";
+  // Default yellow for Sundays and holidays (when status is 'leave' or unset)
+  if (dayOfWeek === 0 || governmentHolidays.includes(dateKey)) return "#eab308";
   return "transparent";
 };
 

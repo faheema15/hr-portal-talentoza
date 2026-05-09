@@ -123,15 +123,16 @@ class Attendance {
 
   // Get attendance records for an employee by date range
   static async getAttendanceRecords(empId, startDate, endDate) {
-    const query = `
-      SELECT * FROM attendance_records
-      WHERE emp_id = $1 
-        AND attendance_date BETWEEN $2 AND $3
-      ORDER BY attendance_date ASC
-    `;
-    const result = await pool.query(query, [empId, startDate, endDate]);
-    return result.rows;
-  }
+  const query = `
+    SELECT id, emp_id, TO_CHAR(attendance_date, 'YYYY-MM-DD') as attendance_date, status, created_at, updated_at
+    FROM attendance_records
+    WHERE emp_id = $1 
+      AND attendance_date BETWEEN $2 AND $3
+    ORDER BY attendance_date ASC
+  `;
+  const result = await pool.query(query, [empId, startDate, endDate]);
+  return result.rows;
+}
 
   // Get attendance records for a specific month
   static async getMonthlyAttendance(empId, year, month) {
