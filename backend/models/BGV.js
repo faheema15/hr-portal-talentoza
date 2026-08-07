@@ -4,23 +4,19 @@ class BGV {
   // Create BGV record
   static async create(data) {
     const query = `
-      INSERT INTO bgv (
-        emp_id, photo, dob, aadhar_number, passport_number, emp_name,
-        contact1, contact2, mail_id1, mail_id2,
-        date_of_joining, designation, department, project,
-        bgv_status, reason_for_reject, education
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, $15, $16, $17
-      )
+      INSERT INTO bgv (emp_id, status, remarks)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (emp_id) DO UPDATE SET
+        status = EXCLUDED.status,
+        remarks = EXCLUDED.remarks,
+        updated_at = CURRENT_TIMESTAMP
       RETURNING *
     `;
     
     const values = [
-      data.empId, data.photo, data.dob, data.aadharNumber, data.passportNumber, data.empName,
-      data.contact1, data.contact2, data.mailId1, data.mailId2,
-      data.dateOfJoining, data.designation, data.department, data.project,
-      data.bgvStatus, data.reasonForReject, data.education
+      data.empId,
+      data.bgvStatus,
+      data.reasonForReject
     ];
 
     const result = await pool.query(query, values);
@@ -45,7 +41,7 @@ class BGV {
   static async findByStatus(status) {
     const query = `
       SELECT * FROM bgv 
-      WHERE bgv_status = $1 
+      WHERE status = $1
       ORDER BY created_at DESC
     `;
     const result = await pool.query(query, [status]);
@@ -56,7 +52,7 @@ class BGV {
   static async findPendingBGV() {
     const query = `
       SELECT * FROM bgv 
-      WHERE bgv_status IS NULL OR bgv_status = '' 
+      WHERE status IS NULL OR status = ''
       ORDER BY created_at DESC
     `;
     const result = await pool.query(query);
@@ -67,7 +63,7 @@ class BGV {
   static async findFailedBGV() {
     const query = `
       SELECT * FROM bgv 
-      WHERE bgv_status IN ('Yellow', 'Red') 
+      WHERE status IN ('Yellow', 'Red')
       ORDER BY created_at DESC
     `;
     const result = await pool.query(query);
@@ -89,20 +85,16 @@ class BGV {
   static async update(empId, data) {
     const query = `
       UPDATE bgv SET
-        photo = $1, dob = $2, aadhar_number = $3, passport_number = $4, emp_name = $5,
-        contact1 = $6, contact2 = $7, mail_id1 = $8, mail_id2 = $9,
-        date_of_joining = $10, designation = $11, department = $12, project = $13,
-        bgv_status = $14, reason_for_reject = $15, education = $16,
+        status = $1,
+        remarks = $2,
         updated_at = CURRENT_TIMESTAMP
-      WHERE emp_id = $17
+      WHERE emp_id = $3
       RETURNING *
     `;
     
     const values = [
-      data.photo, data.dob, data.aadharNumber, data.passportNumber, data.empName,
-      data.contact1, data.contact2, data.mailId1, data.mailId2,
-      data.dateOfJoining, data.designation, data.department, data.project,
-      data.bgvStatus, data.reasonForReject, data.education,
+      data.bgvStatus,
+      data.reasonForReject,
       empId
     ];
 
@@ -114,8 +106,8 @@ class BGV {
   static async updateStatus(empId, status, reason = null) {
     const query = `
       UPDATE bgv SET
-        bgv_status = $1,
-        reason_for_reject = $2,
+        status = $1,
+        remarks = $2
         updated_at = CURRENT_TIMESTAMP
       WHERE emp_id = $3
       RETURNING *
@@ -136,12 +128,12 @@ class BGV {
     const query = `
       SELECT 
         COUNT(*) as total_records,
-        COUNT(*) FILTER (WHERE bgv_status = 'Green') as green_count,
-        COUNT(*) FILTER (WHERE bgv_status = 'Yellow') as yellow_count,
-        COUNT(*) FILTER (WHERE bgv_status = 'Red') as red_count,
-        COUNT(*) FILTER (WHERE bgv_status IS NULL OR bgv_status = '') as pending_count,
+        COUNT(*) FILTER (WHERE status = 'Green') as green_count,
+        COUNT(*) FILTER (WHERE status = 'Yellow') as yellow_count,
+        COUNT(*) FILTER (WHERE status = 'Red') as red_count,
+        COUNT(*) FILTER (WHERE status IS NULL OR status = '') as pending_count,
         ROUND(
-          (COUNT(*) FILTER (WHERE bgv_status = 'Green')::DECIMAL / 
+          (COUNT(*) FILTER (WHERE status = 'Green')::DECIMAL / 
           NULLIF(COUNT(*), 0) * 100), 2
         ) as green_percentage
       FROM bgv
