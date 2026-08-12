@@ -27,3 +27,5 @@ router.put('/:id', salaryController.updateSalary);
 router.delete('/:id', salaryController.deleteSalary);
 
 module.exports = router;
+
+// salaryroutes
