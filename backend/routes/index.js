@@ -45,3 +45,6 @@ router.use('/offer-letters', authController.verifyToken, offerLetterRoutes);
 router.use('/upload', authController.verifyToken, uploadRoutes);
 
 module.exports = router;
+
+// index.js 
+// backend/routes/index
