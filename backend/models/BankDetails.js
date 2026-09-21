@@ -163,3 +163,15 @@ class BankDetails {
 }
 
 module.exports = BankDetails;
+
+
+
+  // Delete bank details
+//   static async delete(empId) {
+//     const query = 'DELETE FROM bank_details WHERE emp_id = $1 RETURNING *';
+//     const result = await pool.query(query, [empId]);
+//     return result.rows[0];
+//   }
+// }
+
+// module.exports = BankDetails;
